@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [AuthViewModel] authentication, registration, session restoration, and server URL switching.
+ */
 package io.healthplatform.pulsequery.ui.screens.auth
 
 import io.healthplatform.pulsequery.api.apis.AuthApi

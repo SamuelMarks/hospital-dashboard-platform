@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [PulseQueryError] domain error hierarchy and [Result] railway extensions.
+ */
 package io.healthplatform.pulsequery.core.error
 
 import io.healthplatform.pulsequery.core.result.andThenSus

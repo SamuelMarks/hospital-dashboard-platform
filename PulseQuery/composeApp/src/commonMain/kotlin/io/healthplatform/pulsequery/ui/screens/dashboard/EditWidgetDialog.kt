@@ -32,7 +32,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.apis.AiApi
@@ -40,6 +42,7 @@ import io.healthplatform.pulsequery.api.apis.DashboardsApi
 import io.healthplatform.pulsequery.api.models.ModelInfo
 import io.healthplatform.pulsequery.api.models.WidgetResponse
 import io.healthplatform.pulsequery.api.models.WidgetUpdate
+import io.healthplatform.pulsequery.core.error.UiErrorKey
 import io.healthplatform.pulsequery.core.model.ProcessorId
 import io.healthplatform.pulsequery.core.model.ProcessorSelectionOption
 import io.healthplatform.pulsequery.core.model.TypedWidgetConfig
@@ -57,6 +60,9 @@ import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.allow_natural_text_label
 import pulsequery.composeapp.generated.resources.cancel
+import pulsequery.composeapp.generated.resources.edit_widget_http_url_label
+import pulsequery.composeapp.generated.resources.edit_widget_markdown_content_label
+import pulsequery.composeapp.generated.resources.edit_widget_sql_query_label
 import pulsequery.composeapp.generated.resources.edit_widget_title_blank_error
 import pulsequery.composeapp.generated.resources.edit_widget_title_format
 import pulsequery.composeapp.generated.resources.natural_text_prompt_label
@@ -129,13 +135,21 @@ internal fun resolveProcessorDisplayName(
  * Resolves the form field label for the primary widget content input based on widget type.
  *
  * @param widgetType Widget type string (`TEXT`, `HTTP`, or `SQL`).
+ * @param markdownLabel Localized label for Markdown content.
+ * @param httpLabel Localized label for HTTP endpoint URL.
+ * @param sqlLabel Localized label for SQL query.
  * @return Input label text.
  */
-internal fun resolveWidgetContentLabel(widgetType: String): String {
+internal fun resolveWidgetContentLabel(
+    widgetType: String,
+    markdownLabel: String = "Markdown Content",
+    httpLabel: String = "HTTP Endpoint URL",
+    sqlLabel: String = "SQL Query"
+): String {
     return when (widgetType.uppercase()) {
-        "TEXT" -> "Markdown Content"
-        "HTTP" -> "HTTP Endpoint URL"
-        else -> "SQL Query"
+        "TEXT" -> markdownLabel
+        "HTTP" -> httpLabel
+        else -> sqlLabel
     }
 }
 
@@ -320,7 +334,7 @@ fun EditWidgetDialog(
                             )
                             submitWidgetUpdate(api, widget.id, updateReq).fold(
                                 onSuccess = { updated -> onWidgetUpdated(updated) },
-                                onFailure = { e -> errorMessage = e.messageOrDefault("Failed to update widget") }
+                                onFailure = { e -> errorMessage = e.messageOrDefault(UiErrorKey.UPDATE_WIDGET_FAILED) }
                             )
                             isLoading = false
                         }
@@ -404,7 +418,8 @@ private fun EditWidgetDialogForm(
             Text(
                 text = err,
                 color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
             )
         }
 
@@ -509,7 +524,12 @@ private fun EditWidgetDialogForm(
             }
         }
 
-        val labelText = resolveWidgetContentLabel(widgetType)
+        val labelText = resolveWidgetContentLabel(
+            widgetType = widgetType,
+            markdownLabel = stringResource(Res.string.edit_widget_markdown_content_label),
+            httpLabel = stringResource(Res.string.edit_widget_http_url_label),
+            sqlLabel = stringResource(Res.string.edit_widget_sql_query_label)
+        )
 
         OutlinedTextField(
             value = queryOrContent,

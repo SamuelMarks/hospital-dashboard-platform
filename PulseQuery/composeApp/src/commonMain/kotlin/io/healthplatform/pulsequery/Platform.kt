@@ -40,6 +40,6 @@ expect fun getDefaultLocalHost(): String
  * @param filename File name including extension.
  * @param mimeType MIME type of the file.
  * @param bytes Binary payload of the file.
- * @return Result containing absolute path or status description upon success, or exception on failure.
+ * @return [Result] containing absolute path or status description upon success, or [io.healthplatform.pulsequery.core.error.PulseQueryError] on failure.
  */
 expect fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray): Result<String>

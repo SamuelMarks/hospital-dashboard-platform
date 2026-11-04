@@ -377,6 +377,14 @@ export function verifySourceFileText(
           errors,
         );
       }
+    } else if (
+      ts.isVariableStatement(node) &&
+      node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+    ) {
+      const declNames = node.declarationList.declarations
+        .map((d) => d.name.getText(sf))
+        .join(", ");
+      verifyNodeDoc(sf, node, `variable ${declNames}`, relPath, errors);
     }
   });
 

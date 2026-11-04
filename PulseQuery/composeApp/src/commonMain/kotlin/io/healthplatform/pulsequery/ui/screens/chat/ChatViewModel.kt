@@ -393,6 +393,11 @@ class ChatViewModel(
         }
     }
 
+    /**
+     * Subscribes to live Server-Sent Events token chunks for [conversationId] and updates `streamingCandidateText`.
+     *
+     * @param conversationId Target conversation UUID string.
+     */
     private suspend fun streamTokensForConversation(conversationId: String) {
         val token = tokenProvider()
         if (token.isNullOrBlank()) return

@@ -1,3 +1,6 @@
+/**
+ * Compose UI tests for [DashboardScreen] widget grid rendering, edit mode, and dialogs.
+ */
 package io.healthplatform.pulsequery.ui.screens
 
 import androidx.compose.material3.MaterialTheme

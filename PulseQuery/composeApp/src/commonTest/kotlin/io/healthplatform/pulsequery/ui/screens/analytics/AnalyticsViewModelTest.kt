@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [AnalyticsViewModel] LLM model performance telemetry and leaderboard aggregation.
+ */
 package io.healthplatform.pulsequery.ui.screens.analytics
 
 import io.healthplatform.pulsequery.api.apis.AnalyticsApi

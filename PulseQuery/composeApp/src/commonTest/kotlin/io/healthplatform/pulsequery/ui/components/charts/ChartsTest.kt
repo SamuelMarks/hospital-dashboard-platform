@@ -1,3 +1,6 @@
+/**
+ * Unit tests for chart data transformation and formatting utilities.
+ */
 package io.healthplatform.pulsequery.ui.components.charts
 
 import kotlin.test.Test

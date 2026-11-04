@@ -3,6 +3,7 @@
  */
 package io.healthplatform.pulsequery.api.infrastructure
 
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -43,7 +44,7 @@ class Base64ByteArray(val value: ByteArray) {
          */
         override fun deserialize(decoder: Decoder): Base64ByteArray {
             val raw = decoder.decodeString()
-            val bytes = runCatching { Base64.decode(raw) }.getOrElse { raw.encodeToByteArray() }
+            val bytes = runCatchingPulse { Base64.decode(raw) }.getOrElse { raw.encodeToByteArray() }
             return Base64ByteArray(bytes)
         }
     }

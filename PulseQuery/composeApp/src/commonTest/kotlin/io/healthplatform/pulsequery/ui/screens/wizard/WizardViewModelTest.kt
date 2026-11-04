@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [WizardViewModel] clinical template catalog filtering, parameter validation, and widget instantiation.
+ */
 package io.healthplatform.pulsequery.ui.screens.wizard
 
 import io.healthplatform.pulsequery.api.models.TemplateResponse

@@ -80,8 +80,14 @@ describe('FocusTrapDirective', () => {
     class AutoFocusHostComponent {}
 
     const afFixture = TestBed.createComponent(AutoFocusHostComponent);
+    const afEl = afFixture.nativeElement as HTMLElement;
+    document.body.appendChild(afEl);
+    const b1 = afEl.querySelector('#b1') as HTMLElement;
+    Object.defineProperty(b1, 'offsetWidth', { value: 100, configurable: true });
+    Object.defineProperty(b1, 'offsetHeight', { value: 100, configurable: true });
     afFixture.detectChanges();
-    expect(afFixture.componentInstance).toBeTruthy();
+    expect(document.activeElement).toBe(b1);
+    afEl.remove();
     afFixture.destroy();
   });
 
@@ -103,29 +109,25 @@ describe('FocusTrapDirective', () => {
 
   it('should prevent default when Tab is pressed and active element is the last focusable', () => {
     last.focus();
-    if (document.activeElement === last) {
-      const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
-      last.dispatchEvent(event);
-      expect(event.defaultPrevented).toBe(true);
-    } else {
-      expect(true).toBe(true);
-    }
+    expect(document.activeElement).toBe(last);
+    const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    last.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(first);
   });
 
   it('should prevent default when Shift+Tab is pressed and active element is the first focusable', () => {
     first.focus();
-    if (document.activeElement === first) {
-      const event = new KeyboardEvent('keydown', {
-        key: 'Tab',
-        shiftKey: true,
-        bubbles: true,
-        cancelable: true,
-      });
-      first.dispatchEvent(event);
-      expect(event.defaultPrevented).toBe(true);
-    } else {
-      expect(true).toBe(true);
-    }
+    expect(document.activeElement).toBe(first);
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    first.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(last);
   });
 
   it('should not prevent default for Tab on a middle element', () => {

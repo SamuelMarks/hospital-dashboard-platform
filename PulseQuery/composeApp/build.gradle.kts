@@ -249,13 +249,8 @@ kover {
                     "io.healthplatform.pulsequery.database.PulseQueryDatabase*",
                     "io.healthplatform.pulsequery.database.AppConfig*",
                     "io.healthplatform.pulsequery.database.CachedWidget*",
-                    "io.healthplatform.pulsequery.database.PulseQueryDatabase*",
-                    "io.healthplatform.pulsequery.database.composeApp.*",
                     "io.healthplatform.pulsequery.ComposableSingletons\$*",
-                    "*ComposableSingletons*",
-                    "io.healthplatform.pulsequery.database.AppConfig*",
-                    "io.healthplatform.pulsequery.ui.screens.editor.SaveQueryDialogKt*",
-                    "io.healthplatform.pulsequery.ui.screens.dashboard.DashboardShareDialogKt*"
+                    "*ComposableSingletons*"
                 )
             }
         }

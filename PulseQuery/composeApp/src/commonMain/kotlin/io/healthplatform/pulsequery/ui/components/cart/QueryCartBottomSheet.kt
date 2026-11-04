@@ -37,10 +37,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.SqlConfig
 import io.healthplatform.pulsequery.api.models.WidgetIn
+import io.healthplatform.pulsequery.core.error.UiErrorKey
 import io.healthplatform.pulsequery.core.result.asResultMap
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runResultPulseAsync
@@ -49,6 +53,7 @@ import io.healthplatform.pulsequery.network.StagedQuery
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.cart_add_widgets_fmt
 import pulsequery.composeapp.generated.resources.cart_empty_message
 import pulsequery.composeapp.generated.resources.clear_all
 import pulsequery.composeapp.generated.resources.query_cart
@@ -158,7 +163,8 @@ internal fun QueryCartSheetContent(
             Text(
                 text = errorText,
                 color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -203,7 +209,7 @@ internal fun QueryCartSheetContent(
                                     onDismiss()
                                 },
                                 onFailure = { e ->
-                                    deployError = e.messageOrDefault("Failed to deploy queries to dashboard")
+                                    deployError = e.messageOrDefault(UiErrorKey.CART_DEPLOY_FAILED)
                                 }
                             )
                             isDeploying = false
@@ -238,7 +244,7 @@ private fun DeployCartButtonContent(
     if (isDeploying) {
         CircularProgressIndicator(modifier = Modifier.size(20.dp))
     } else {
-        Text("Add $stagedCount Widgets to Dashboard")
+        Text(stringResource(Res.string.cart_add_widgets_fmt, stagedCount))
     }
 }
 

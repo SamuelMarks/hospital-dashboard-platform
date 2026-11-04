@@ -4,6 +4,7 @@
 package io.healthplatform.pulsequery
 
 import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import kotlinx.browser.document
 import org.khronos.webgl.Int8Array
 import org.w3c.dom.HTMLAnchorElement
@@ -49,7 +50,7 @@ internal fun saveJsFileToDeviceWithFactory(
     bytes: ByteArray,
     elementFactory: () -> org.w3c.dom.Element = { document.createElement("a") }
 ): Result<String> {
-    return runCatching {
+    return runCatchingPulse {
         val int8Array = Int8Array(bytes.toTypedArray())
         val blob = Blob(arrayOf(int8Array), BlobPropertyBag(type = mimeType))
         val objectUrl = URL.createObjectURL(blob)

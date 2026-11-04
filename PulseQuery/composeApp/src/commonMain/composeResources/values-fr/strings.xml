@@ -391,4 +391,23 @@
     <string name="table_header_value">Valeur</string>
     <string name="heatmap_insufficient_dimensions">Dimensions de matrice insuffisantes pour la carte thermique (nécessite au moins 3 colonnes).</string>
     <string name="viz_incompat_banner_title">Visualisation non applicable au résultat SQL</string>
+    <string name="cart_add_widgets_fmt">Ajouter %1$d widgets au tableau de bord</string>
+    <string name="cart_deploy_failed">Échec du déploiement des requêtes sur le tableau de bord</string>
+    <string name="save_query_select_target_dashboard">Sélectionner le tableau de bord cible</string>
+    <string name="save_query_loading_dashboards">Chargement des tableaux de bord...</string>
+    <string name="save_query_visualization_fmt">Visualisation : %1$s</string>
+    <string name="save_query_title_required">Le titre est obligatoire</string>
+    <string name="save_query_dashboard_required">Le tableau de bord cible est obligatoire</string>
+    <string name="save_query_failed">Échec de l’enregistrement de la requête</string>
+    <string name="save_query_expand_dashboard_desc">Développer le menu de sélection du tableau de bord</string>
+    <string name="save_query_expand_visualization_desc">Développer le menu de sélection de la visualisation</string>
+    <string name="share_collaborators_count_fmt">Collaborateurs (%1$d)</string>
+    <string name="share_permission_fmt">Permission : %1$s</string>
+    <string name="share_revoke_access_fmt">Révoquer l’accès pour %1$s</string>
+    <string name="wizard_default_value_fmt">Par défaut : %1$s</string>
+    <string name="wizard_authoring_widget_fmt">Création : Widget %1$s</string>
+    <string name="edit_widget_markdown_content_label">Contenu Markdown</string>
+    <string name="edit_widget_http_url_label">URL du point de terminaison HTTP</string>
+    <string name="edit_widget_sql_query_label">Requête SQL</string>
+    <string name="edit_widget_update_failed">Échec de la mise à jour du widget</string>
     </resources>

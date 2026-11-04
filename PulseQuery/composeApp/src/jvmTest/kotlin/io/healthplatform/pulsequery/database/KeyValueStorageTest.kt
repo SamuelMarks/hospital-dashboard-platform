@@ -1,3 +1,6 @@
+/**
+ * JVM SQLite unit tests for [KeyValueStorage] persistent key-value CRUD operations.
+ */
 package io.healthplatform.pulsequery.database
 
 import app.cash.sqldelight.db.SqlDriver

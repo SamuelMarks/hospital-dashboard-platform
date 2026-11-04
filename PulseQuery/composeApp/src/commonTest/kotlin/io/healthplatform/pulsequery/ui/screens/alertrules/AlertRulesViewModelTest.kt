@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [AlertRulesViewModel] hospital capacity alert threshold CRUD and evaluation.
+ */
 package io.healthplatform.pulsequery.ui.screens.alertrules
 
 import io.healthplatform.pulsequery.api.apis.AlertRulesApi

@@ -2,7 +2,7 @@
  * @fileoverview Modal dialog component for creating a new analytics dashboard.
  */
 import { Component, inject, signal } from '@angular/core';
-import { form, required, minLength } from '@angular/forms/signals';
+import { FormRoot, form, required, minLength } from '@angular/forms/signals';
 import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,7 +20,14 @@ import { extractEventInputValue } from '../shared/utils/dom-event.utils';
  */
 @Component({
   selector: 'app-dashboard-create-dialog',
-  imports: [MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule],
+  imports: [
+    FormRoot,
+    MatDialogModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatIconModule,
+  ],
   templateUrl: './dashboard-create.dialog.html',
 })
 export class DashboardCreateDialog {

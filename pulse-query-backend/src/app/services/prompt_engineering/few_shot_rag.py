@@ -71,7 +71,7 @@ class TemplateRetriever:
       with open(DATA_FILE_PATH, "r", encoding="utf-8") as f:
         data: list[JsonObject] = json.load(f)
         return data
-    except Exception:
+    except (OSError, ValueError, TypeError):
       return []
 
   def _tokenize(self, text: str) -> set[str]:

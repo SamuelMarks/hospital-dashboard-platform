@@ -110,7 +110,25 @@ enum class UiErrorKey(
     CHAT_STREAM_HTTP_ERROR("chat_stream_http_error", "Server returned"),
 
     /** Generic SSE chat streaming failure or malformed packet. */
-    CHAT_STREAM_FAILED("chat_stream_failed", "Streaming failed");
+    CHAT_STREAM_FAILED("chat_stream_failed", "Streaming failed"),
+
+    /** Fallback when deploying staged queries from the query cart fails. */
+    CART_DEPLOY_FAILED("cart_deploy_failed", "Failed to deploy queries to dashboard"),
+
+    /** Fallback when saving an analytical query or template fails. */
+    SAVE_QUERY_FAILED("save_query_failed", "Failed to save query"),
+
+    /** Fallback when updating an existing widget fails. */
+    UPDATE_WIDGET_FAILED("edit_widget_update_failed", "Failed to update widget"),
+
+    /** Fallback when loading dashboard collaborators fails. */
+    LOAD_COLLABORATORS("failed_to_load_data", "Failed to load collaborators"),
+
+    /** Fallback when inviting a dashboard collaborator fails. */
+    INVITE_COLLABORATOR("failed_to_load_data", "Failed to invite user"),
+
+    /** Fallback when revoking a dashboard share fails. */
+    REVOKE_COLLABORATOR("failed_to_load_data", "Failed to revoke share");
 
     /**
      * Companion utilities for mapping [PulseQueryError] subtypes to [UiErrorKey].

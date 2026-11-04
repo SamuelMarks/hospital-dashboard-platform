@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [createHttpClient] Ktor configuration, bearer token injection, and logging.
+ */
 package io.healthplatform.pulsequery.network
 
 import io.ktor.client.HttpClient

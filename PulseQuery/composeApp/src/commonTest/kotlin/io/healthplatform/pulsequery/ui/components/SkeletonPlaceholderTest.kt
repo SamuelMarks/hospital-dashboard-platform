@@ -1,3 +1,6 @@
+/**
+ * Compose UI and accessibility semantics tests for skeleton loading placeholders.
+ */
 package io.healthplatform.pulsequery.ui.components
 
 import androidx.compose.material3.MaterialTheme

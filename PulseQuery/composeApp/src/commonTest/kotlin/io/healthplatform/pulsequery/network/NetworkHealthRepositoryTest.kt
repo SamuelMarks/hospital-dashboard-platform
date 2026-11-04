@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [NetworkHealthRepository] reachability polling and offline diagnostics.
+ */
 package io.healthplatform.pulsequery.network
 
 import io.healthplatform.pulsequery.core.error.PulseQueryError

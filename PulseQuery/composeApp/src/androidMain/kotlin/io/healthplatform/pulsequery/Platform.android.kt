@@ -5,6 +5,7 @@ package io.healthplatform.pulsequery
 
 import android.os.Build
 import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
 
 /**
  * Represents the Android execution platform metadata.
@@ -131,7 +132,7 @@ internal fun resolveAndroidTargetDir(
  * @param filename File name including extension.
  * @param mimeType MIME type of the payload.
  * @param bytes Binary payload of the file.
- * @return [Result] containing absolute path or exception.
+ * @return [Result] containing absolute path on success, or [PulseQueryError.Storage.WriteFailure] on failure.
  */
 actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray): Result<String> {
     val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(
@@ -139,7 +140,7 @@ actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray
     )
     val targetDir = resolveAndroidTargetDir(downloadsDir)
     val targetFile = java.io.File(targetDir, filename)
-    return runCatching {
+    return runCatchingPulse {
         targetFile.writeBytes(bytes)
         targetFile.absolutePath
     }.fold(

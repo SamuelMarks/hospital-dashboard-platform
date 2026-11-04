@@ -187,11 +187,21 @@ class ReadOnlyDuckDBCursorProxy:
     return self
 
   def fetchall(self) -> list[tuple[SqlScalar, ...]]:
-    """Fetches all rows from the query result."""
+    """
+    Fetches all rows from the query result.
+
+    Returns:
+        list[tuple[SqlScalar, ...]]: All fetched rows.
+    """
     return self._inner.fetchall()
 
   def fetchone(self) -> tuple[SqlScalar, ...] | None:
-    """Fetches the next row from the query result."""
+    """
+    Fetches the next row from the query result.
+
+    Returns:
+        tuple[SqlScalar, ...] | None: Next result row or `None` if exhausted.
+    """
     return self._inner.fetchone()
 
   def fetchmany(self, size: int = 1) -> list[tuple[SqlScalar, ...]]:
@@ -232,7 +242,12 @@ class ReadOnlyDuckDBConnectionProxy:
     return self._inner
 
   def cursor(self) -> ReadOnlyDuckDBCursorProxy:
-    """Returns a `ReadOnlyDuckDBCursorProxy` wrapping a new DuckDB cursor."""
+    """
+    Returns a `ReadOnlyDuckDBCursorProxy` wrapping a new DuckDB cursor.
+
+    Returns:
+        ReadOnlyDuckDBCursorProxy: Sandboxed read-only cursor proxy.
+    """
     return ReadOnlyDuckDBCursorProxy(self._inner.cursor())
 
   def execute(self, query: str) -> ReadOnlyDuckDBCursorProxy:
@@ -353,7 +368,12 @@ class PooledReadOnlyDuckDBConnectionProxy:
     return self._inner
 
   def cursor(self) -> DuckDBCursorProtocol:
-    """Returns a cursor from the underlying read-only DuckDB connection."""
+    """
+    Returns a cursor from the underlying read-only DuckDB connection.
+
+    Returns:
+        DuckDBCursorProtocol: Cursor on the underlying connection.
+    """
     return self._inner.cursor()
 
   def execute(self, query: str) -> DuckDBFetchableProtocol:
@@ -553,6 +573,60 @@ class DuckDBManager:
       )
     return Ok(status_dict)
 
+  def get_connection_result(self, max_retries: int = 5) -> AppResult[duckdb.DuckDBPyConnection]:
+    """
+    Opens a Read-Write DuckDB connection wrapped in `AppResult[duckdb.DuckDBPyConnection]`
+    with retry backoff on transient file locks.
+
+    Args:
+        max_retries (int): Maximum retry attempts for transient file lock contention.
+
+    Returns:
+        AppResult[duckdb.DuckDBPyConnection]: `Ok(conn)` on success, or `Err(AppError)` on failure.
+    """
+    self.close_readonly_pool()
+    for attempt in range(max_retries):
+      try:
+        conn = duckdb.connect(database=self.db_path, read_only=False)
+        register_duckdb_udfs(conn)
+        return Ok(conn)
+      except (duckdb.IOException, duckdb.ConnectionException) as exc:
+        err_lower = str(exc).lower()
+        if ("lock" in err_lower or "different configuration" in err_lower) and attempt < max_retries - 1:
+          logger.warning(f"DuckDB locked, retrying read-write connection ({attempt + 1}/{max_retries})...")
+          time.sleep(0.05 * (attempt + 1))
+          continue
+        logger.error(f"Failed to connect to DuckDB at {self.db_path}: {exc}")
+        return Err(
+          AppError(
+            code=ErrorCode.DUCKDB_STORAGE_ERROR,
+            message=f"Failed to open DuckDB read-write connection: {exc}",
+            status_code=503,
+            details={"raw_exception": type(exc).__name__, "raw_message": str(exc)},
+          )
+        )
+      except (duckdb.Error, OSError, RuntimeError, ValueError, TypeError) as exc:
+        logger.error(f"Failed to connect to DuckDB at {self.db_path}: {exc}")
+        return Err(
+          AppError(
+            code=ErrorCode.DUCKDB_STORAGE_ERROR,
+            message=f"Failed to open DuckDB read-write connection: {exc}",
+            status_code=503,
+            details={"raw_exception": type(exc).__name__, "raw_message": str(exc)},
+          )
+        )
+    return Err(
+      AppError(
+        code=ErrorCode.DUCKDB_STORAGE_ERROR,
+        message=f"Failed to open DuckDB connection after {max_retries} retries.",
+        status_code=503,
+        details={
+          "raw_exception": "IOException",
+          "raw_message": f"Failed to open DuckDB connection after {max_retries} retries.",
+        },
+      )
+    )
+
   def get_connection(self, max_retries: int = 5) -> duckdb.DuckDBPyConnection:
     """
     Opens a standard Read-Write connection to the DuckDB file with retry backoff on transient locks.
@@ -567,24 +641,93 @@ class DuckDBManager:
     Raises:
         Exception: If connection fails.
     """
-    self.close_readonly_pool()
+    res = self.get_connection_result(max_retries=max_retries)
+    if isinstance(res, Ok):
+      return res.value
+    raw_exc = str(res.error.details.get("raw_exception") or "IOException")
+    raw_msg = str(res.error.details.get("raw_message") or res.error.message)
+    if raw_exc == "RuntimeError":
+      raise RuntimeError(raw_msg)
+    raise duckdb.IOException(raw_msg)
+
+  def get_readonly_connection_result(
+    self,
+    max_retries: int = 3,
+    use_pool: bool = False,
+  ) -> AppResult[DuckDBReadableConnectionProtocol]:
+    """
+    Opens a sandboxed Read-Only DuckDB connection wrapped in `AppResult[DuckDBReadableConnectionProtocol]`
+    with optional connection pooling and retry backoff on transient locks.
+
+    Args:
+        max_retries (int): Maximum retry attempts for transient file lock contention.
+        use_pool (bool): If True, checks out a reusable connection from `_readonly_pool` wrapped in
+            `PooledReadOnlyDuckDBConnectionProxy`.
+
+    Returns:
+        AppResult[DuckDBReadableConnectionProtocol]: `Ok(conn)` on success, or `Err(AppError)` on failure.
+    """
+    if use_pool and max_retries > 0 and self.pool_size > 0:
+      try:
+        pooled_inner = self._readonly_pool.get_nowait()
+        return Ok(PooledReadOnlyDuckDBConnectionProxy(pooled_inner, self._release_readonly_connection))
+      except queue.Empty:
+        pass
+
     for attempt in range(max_retries):
       try:
-        conn = duckdb.connect(database=self.db_path, read_only=False)
+        if self.db_path == ":memory:":
+          raw_conn = duckdb.connect(database=":memory:", read_only=False, config={"enable_external_access": "false"})
+          register_duckdb_udfs(raw_conn)
+          mem_proxy: DuckDBReadableConnectionProtocol = ReadOnlyDuckDBConnectionProxy(raw_conn)
+          return Ok(
+            PooledReadOnlyDuckDBConnectionProxy(mem_proxy, self._release_readonly_connection)
+            if use_pool and self.pool_size > 0
+            else mem_proxy
+          )
+        conn = duckdb.connect(database=self.db_path, read_only=True, config={"enable_external_access": "false"})
         register_duckdb_udfs(conn)
-        return conn
-      except (duckdb.IOException, duckdb.ConnectionException) as e:
-        err_lower = str(e).lower()
+        return Ok(
+          PooledReadOnlyDuckDBConnectionProxy(conn, self._release_readonly_connection)
+          if use_pool and self.pool_size > 0
+          else conn
+        )
+      except (duckdb.IOException, duckdb.ConnectionException) as exc:
+        err_lower = str(exc).lower()
         if ("lock" in err_lower or "different configuration" in err_lower) and attempt < max_retries - 1:
-          logger.warning(f"DuckDB locked, retrying read-write connection ({attempt + 1}/{max_retries})...")
+          logger.warning(f"DuckDB locked, retrying readonly connection ({attempt + 1}/{max_retries})...")
           time.sleep(0.05 * (attempt + 1))
           continue
-        logger.error(f"Failed to connect to DuckDB at {self.db_path}: {e}")
-        raise e
-      except (duckdb.Error, OSError, RuntimeError, ValueError, TypeError) as e:
-        logger.error(f"Failed to connect to DuckDB at {self.db_path}: {e}")
-        raise e
-    raise duckdb.IOException(f"Failed to open DuckDB connection after {max_retries} retries.")
+        logger.error(f"Failed to open Read-Only DuckDB connection: {exc}")
+        return Err(
+          AppError(
+            code=ErrorCode.DUCKDB_STORAGE_ERROR,
+            message=f"Failed to open DuckDB read-only connection: {exc}",
+            status_code=503,
+            details={"raw_exception": type(exc).__name__, "raw_message": str(exc)},
+          )
+        )
+      except (duckdb.Error, OSError, RuntimeError, ValueError, TypeError) as exc:
+        logger.error(f"Failed to open Read-Only DuckDB connection: {exc}")
+        return Err(
+          AppError(
+            code=ErrorCode.DUCKDB_STORAGE_ERROR,
+            message=f"Failed to open DuckDB read-only connection: {exc}",
+            status_code=503,
+            details={"raw_exception": type(exc).__name__, "raw_message": str(exc)},
+          )
+        )
+    return Err(
+      AppError(
+        code=ErrorCode.DUCKDB_STORAGE_ERROR,
+        message=f"Failed to open DuckDB connection after {max_retries} retries.",
+        status_code=503,
+        details={
+          "raw_exception": "IOException",
+          "raw_message": f"Failed to open DuckDB connection after {max_retries} retries.",
+        },
+      )
+    )
 
   def get_readonly_connection(
     self,
@@ -607,43 +750,14 @@ class DuckDBManager:
     Raises:
         Exception: If connection fails after retries.
     """
-    if use_pool and max_retries > 0 and self.pool_size > 0:
-      try:
-        pooled_inner = self._readonly_pool.get_nowait()
-        return PooledReadOnlyDuckDBConnectionProxy(pooled_inner, self._release_readonly_connection)
-      except queue.Empty:
-        pass
-
-    for attempt in range(max_retries):
-      try:
-        if self.db_path == ":memory:":
-          raw_conn = duckdb.connect(database=":memory:", read_only=False, config={"enable_external_access": "false"})
-          register_duckdb_udfs(raw_conn)
-          mem_proxy: DuckDBReadableConnectionProtocol = ReadOnlyDuckDBConnectionProxy(raw_conn)
-          return (
-            PooledReadOnlyDuckDBConnectionProxy(mem_proxy, self._release_readonly_connection)
-            if use_pool and self.pool_size > 0
-            else mem_proxy
-          )
-        conn = duckdb.connect(database=self.db_path, read_only=True, config={"enable_external_access": "false"})
-        register_duckdb_udfs(conn)
-        return (
-          PooledReadOnlyDuckDBConnectionProxy(conn, self._release_readonly_connection)
-          if use_pool and self.pool_size > 0
-          else conn
-        )
-      except (duckdb.IOException, duckdb.ConnectionException) as e:
-        err_lower = str(e).lower()
-        if ("lock" in err_lower or "different configuration" in err_lower) and attempt < max_retries - 1:
-          logger.warning(f"DuckDB locked, retrying readonly connection ({attempt + 1}/{max_retries})...")
-          time.sleep(0.05 * (attempt + 1))
-          continue
-        logger.error(f"Failed to open Read-Only DuckDB connection: {e}")
-        raise e
-      except (duckdb.Error, OSError, RuntimeError, ValueError, TypeError) as e:
-        logger.error(f"Failed to open Read-Only DuckDB connection: {e}")
-        raise e
-    raise duckdb.IOException(f"Failed to open DuckDB connection after {max_retries} retries.")
+    res = self.get_readonly_connection_result(max_retries=max_retries, use_pool=use_pool)
+    if isinstance(res, Ok):
+      return res.value
+    raw_exc = str(res.error.details.get("raw_exception") or "IOException")
+    raw_msg = str(res.error.details.get("raw_message") or res.error.message)
+    if raw_exc == "RuntimeError":
+      raise RuntimeError(raw_msg)
+    raise duckdb.IOException(raw_msg)
 
   def get_pooled_readonly_connection(self, max_retries: int = 3) -> DuckDBReadableConnectionProtocol:
     """
@@ -657,48 +771,6 @@ class DuckDBManager:
         DuckDBReadableConnectionProtocol: Pooled read-only DuckDB connection proxy.
     """
     return self.get_readonly_connection(max_retries=max_retries, use_pool=True)
-
-  def get_connection_result(self, max_retries: int = 5) -> AppResult[duckdb.DuckDBPyConnection]:
-    """
-    Opens a Read-Write DuckDB connection wrapped in `AppResult[duckdb.DuckDBPyConnection]`.
-
-    Args:
-        max_retries (int): Maximum retry attempts for transient file lock contention.
-
-    Returns:
-        AppResult[duckdb.DuckDBPyConnection]: `Ok(conn)` on success, or `Err(AppError)` on failure.
-    """
-    try:
-      return Ok(self.get_connection(max_retries=max_retries))
-    except (duckdb.Error, OSError, RuntimeError, ValueError, TypeError) as exc:
-      return Err(
-        AppError(
-          code=ErrorCode.DUCKDB_STORAGE_ERROR,
-          message=f"Failed to open DuckDB read-write connection: {exc}",
-          status_code=503,
-        )
-      )
-
-  def get_readonly_connection_result(self, max_retries: int = 3) -> AppResult[DuckDBReadableConnectionProtocol]:
-    """
-    Opens a sandboxed Read-Only DuckDB connection wrapped in `AppResult[DuckDBReadableConnectionProtocol]`.
-
-    Args:
-        max_retries (int): Maximum retry attempts for transient file lock contention.
-
-    Returns:
-        AppResult[DuckDBReadableConnectionProtocol]: `Ok(conn)` on success, or `Err(AppError)` on failure.
-    """
-    try:
-      return Ok(self.get_readonly_connection(max_retries=max_retries))
-    except (duckdb.Error, OSError, RuntimeError, ValueError, TypeError) as exc:
-      return Err(
-        AppError(
-          code=ErrorCode.DUCKDB_STORAGE_ERROR,
-          message=f"Failed to open DuckDB read-only connection: {exc}",
-          status_code=503,
-        )
-      )
 
   async def get_readonly_connection_async_result(
     self,

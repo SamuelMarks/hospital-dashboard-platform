@@ -6,6 +6,7 @@
  */
 
 import { Component, computed, input, model, output } from '@angular/core';
+import { FormField, form } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
@@ -17,7 +18,6 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 import { WidgetResponse } from '../../api-client';
 import { WidgetComponent } from '../../widget/widget.component';
-import { extractEventInputValue } from '../../shared/utils/dom-event.utils';
 import {
   ProcessorOption,
   SQL_NO_MODEL_OPTION,
@@ -46,6 +46,7 @@ export interface VisualizationOption {
 @Component({
   selector: 'app-widget-builder-visualize-step',
   imports: [
+    FormField,
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
@@ -68,7 +69,7 @@ export interface VisualizationOption {
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-3">
           <mat-label i18n>Widget Title</mat-label>
-          <input matInput [value]="title()" (input)="title.set(getEventValue($event))" />
+          <input matInput [formField]="titleField" />
         </mat-form-field>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4">
@@ -78,8 +79,7 @@ export interface VisualizationOption {
             data-testid="input-widget-subtitle"
             i18n-placeholder
             placeholder="Describe what this widget displays..."
-            [value]="subtitle()"
-            (input)="subtitle.set(getEventValue($event))"
+            [formField]="subtitleField"
           />
         </mat-form-field>
 
@@ -133,8 +133,7 @@ export interface VisualizationOption {
               <input
                 matInput
                 data-testid="input-natural-text-prompt"
-                [value]="naturalTextPrompt()"
-                (input)="naturalTextPrompt.set(getEventValue($event))"
+                [formField]="naturalTextPromptField"
               />
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4">
@@ -142,8 +141,7 @@ export interface VisualizationOption {
               <input
                 matInput
                 data-testid="input-placeholder-text"
-                [value]="placeholderText()"
-                (input)="placeholderText.set(getEventValue($event))"
+                [formField]="placeholderTextField"
               />
             </mat-form-field>
           }
@@ -164,10 +162,7 @@ export interface VisualizationOption {
               (click)="selectVisualization(viz.id)"
               (keydown.enter)="selectVisualization(viz.id)"
               (keydown.space)="selectVisualization(viz.id); $event.preventDefault()"
-              role="button"
-              tabindex="0"
               [attr.data-testid]="'viz-chip-' + viz.id"
-              [attr.aria-pressed]="selectedVisualization() === viz.id"
               [attr.aria-selected]="selectedVisualization() === viz.id"
               class="w-full viz-option"
             >
@@ -335,6 +330,14 @@ export class WidgetBuilderVisualizeStepComponent {
   readonly naturalTextPrompt = model<string>('');
   /** Optional custom placeholder text for the widget natural text input (two-way bound). */
   readonly placeholderText = model<string>('');
+  /** Signal Form field bound to `title`. */
+  readonly titleField = form(this.title);
+  /** Signal Form field bound to `subtitle`. */
+  readonly subtitleField = form(this.subtitle);
+  /** Signal Form field bound to `naturalTextPrompt`. */
+  readonly naturalTextPromptField = form(this.naturalTextPrompt);
+  /** Signal Form field bound to `placeholderText`. */
+  readonly placeholderTextField = form(this.placeholderText);
   /** Available processor options (`SQL [no model]`, Ollama models, `any-llm` models). */
   readonly processors = input<ProcessorOption[]>([SQL_NO_MODEL_OPTION]);
 
@@ -375,15 +378,5 @@ export class WidgetBuilderVisualizeStepComponent {
    */
   formatSuggestedViz(viz: CanonicalVisualizationType): string {
     return formatVizLabel(viz);
-  }
-
-  /**
-   * Extracts the string value from a DOM input event.
-   *
-   * @param event - DOM input event from the title field.
-   * @returns Extracted string value.
-   */
-  getEventValue(event: Event): string {
-    return extractEventInputValue(event);
   }
 }

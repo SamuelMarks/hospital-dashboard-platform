@@ -4,6 +4,7 @@
 package io.healthplatform.pulsequery
 
 import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -104,7 +105,7 @@ internal fun writeIosPayloadWithFallback(
     val targetDirPath = targetDir.trimEnd('/')
     val fullPath = "$targetDirPath/$filename"
 
-    return runCatching {
+    return runCatchingPulse {
         var writeSuccess = writer(fullPath)
         var finalPath = fullPath
         val normalizedTempDir = tempDir.trimEnd('/')
@@ -138,7 +139,7 @@ internal fun writeIosPayloadWithFallback(
  * @param filename Target file name including extension.
  * @param mimeType Standard MIME type associated with the payload.
  * @param bytes Binary content of the file.
- * @return [Result] containing the absolute local file path on success, or exception on failure.
+ * @return [Result] containing the absolute local file path on success, or [PulseQueryError.Storage.WriteFailure] on failure.
  */
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray): Result<String> {

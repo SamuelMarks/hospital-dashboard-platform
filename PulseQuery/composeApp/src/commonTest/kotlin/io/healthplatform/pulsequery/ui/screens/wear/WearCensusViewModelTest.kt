@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [WearCensusViewModel] wearable hospital unit occupancy monitoring and alert evaluation.
+ */
 package io.healthplatform.pulsequery.ui.screens.wear
 
 import io.healthplatform.pulsequery.api.apis.AlertRulesApi

@@ -1,3 +1,6 @@
+/**
+ * JVM SQLite unit tests for [WidgetCacheStorage] offline widget snapshot persistence.
+ */
 package io.healthplatform.pulsequery.database
 
 import app.cash.sqldelight.db.SqlDriver

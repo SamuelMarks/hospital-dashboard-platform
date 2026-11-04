@@ -41,13 +41,66 @@ style:
   ForbiddenComment:
     active: true
   MagicNumber:
-    active: false
+    active: true
+    ignoreNumbers:
+      - '-1'
+      - '0'
+      - '1'
+      - '2'
+      - '3'
+      - '4'
+      - '5'
+      - '6'
+      - '8'
+      - '10'
+      - '12'
+      - '14'
+      - '16'
+      - '20'
+      - '24'
+      - '32'
+      - '48'
+      - '64'
+      - '100'
+      - '120'
+      - '200'
+      - '360'
+      - '400'
+      - '401'
+      - '403'
+      - '404'
+      - '409'
+      - '500'
+      - '1000'
+      - '0.5'
+      - '0.5f'
+      - '1.0'
+      - '1f'
+      - '100.0'
+      - '100f'
+    ignoreHashCodeFunction: true
+    ignorePropertyDeclaration: true
+    ignoreLocalVariableDeclaration: true
+    ignoreConstantDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotation: true
+    ignoreNamedArgument: true
+    ignoreEnums: true
+    ignoreRanges: true
+    ignoreExtensionFunctions: true
+    ignoreAnnotated: ['Composable', 'Preview']
   ReturnCount:
     active: true
     max: 6
     excludeGuardClauses: true
   MaxLineLength:
-    active: false
+    active: true
+    maxLineLength: 160
+    excludePackageStatements: true
+    excludeImportStatements: true
+    excludeCommentStatements: true
+    excludeRawStrings: true
+    excludes: ['**/api/apis/**']
   UnusedPrivateMember:
     active: true
     ignoreAnnotated: ['Composable', 'Preview']

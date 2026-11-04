@@ -1,3 +1,6 @@
+/**
+ * Compose UI and accessibility semantics tests for [WizardScreen] template selection and configuration.
+ */
 package io.healthplatform.pulsequery.ui.screens
 
 import androidx.compose.material3.MaterialTheme

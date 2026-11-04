@@ -452,6 +452,12 @@ class OptimizationViewModel(
         }
     }
 
+    /**
+     * Maps a UI [OptimizationUseCaseType] enum value to the OpenAPI [OptimizationSolveRequest.UseCase] wire enum.
+     *
+     * @param uc Selected [OptimizationUseCaseType].
+     * @return Corresponding [OptimizationSolveRequest.UseCase] wire value.
+     */
     private fun toRequestUseCase(uc: OptimizationUseCaseType): OptimizationSolveRequest.UseCase =
         when (uc) {
             OptimizationUseCaseType.SERVICE_UNIT -> OptimizationSolveRequest.UseCase.service_unit

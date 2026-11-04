@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [DashboardViewModel] dashboard CRUD, widget execution, offline cache fallback, and undo/redo history.
+ */
 package io.healthplatform.pulsequery.ui.screens.dashboard
 
 import io.healthplatform.pulsequery.api.apis.DashboardsApi

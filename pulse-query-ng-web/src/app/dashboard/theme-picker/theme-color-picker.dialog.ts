@@ -4,7 +4,7 @@
  */
 
 import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
-import { form, maxLength } from '@angular/forms/signals';
+import { FormRoot, form, maxLength } from '@angular/forms/signals';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -79,6 +79,7 @@ export const CLINICAL_PALETTES: ClinicalPalette[] = [
 @Component({
   selector: 'app-theme-color-picker-dialog',
   imports: [
+    FormRoot,
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,

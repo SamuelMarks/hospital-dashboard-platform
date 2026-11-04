@@ -17,7 +17,7 @@ import httpx
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import settings
-from app.core.result import AppResult, Ok
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.schemas.admin import AdminSettingsResponse
 from app.schemas.ai import ModelInfo
 from app.schemas.json_types import JsonPrimitive
@@ -39,6 +39,7 @@ from app.services.llm.fallback_mock import (
   build_streaming_mock_sql_response,
 )
 from app.services.llm.gemma4_sql_provider import Gemma4SqlProvider
+from app.services.llm.swarm_registry import build_raw_swarm_configs
 
 logger = logging.getLogger(__name__)
 
@@ -205,27 +206,34 @@ _DONE_SENTINEL = _StreamDoneSentinel()
 type StreamQueueItem = str | Exception | _StreamDoneSentinel
 
 
-def _extract_completion_content(response: StreamableCompletionResult) -> str:
+def _extract_completion_content(response: StreamableCompletionResult) -> AppResult[str]:
   """
-  Extracts trimmed text content from a non-streaming completion response.
+  Extracts trimmed text content from a non-streaming completion response as an `AppResult[str]`.
 
   Args:
       response (StreamableCompletionResult): Completion response object from provider.
 
   Returns:
-      str: Trimmed completion message content.
-
-  Raises:
-      AttributeError: If the response or its first choice does not conform to
-          `CompletionChunkProtocol` / `CompletionMessageChoiceProtocol` or has `None` content.
-      IndexError: If `response.choices` is empty.
+      AppResult[str]: `Ok(content)` with trimmed completion text, or `Err(AppError)` when malformed.
   """
-  if not isinstance(response, CompletionChunkProtocol):
-    raise AttributeError("Response does not implement CompletionChunkProtocol")
+  if not isinstance(response, CompletionChunkProtocol) or not response.choices:
+    return Err(
+      AppError(
+        code=ErrorCode.LLM_PROVIDER_ERROR,
+        message="Malformed response structure",
+        status_code=502,
+      )
+    )
   first_choice = response.choices[0]
   if not isinstance(first_choice, CompletionMessageChoiceProtocol) or first_choice.message.content is None:
-    raise AttributeError("Choice does not contain message content")
-  return first_choice.message.content.strip()
+    return Err(
+      AppError(
+        code=ErrorCode.LLM_PROVIDER_ERROR,
+        message="Malformed response structure",
+        status_code=502,
+      )
+    )
+  return Ok(first_choice.message.content.strip())
 
 
 def _extract_chunk_delta(chunk: CompletionChunkProtocol) -> str | None:
@@ -323,63 +331,15 @@ class LLMArenaClient:
     Returns:
         list[dict[str, JsonPrimitive]]: Normalized configuration dictionaries.
     """
-    raw_configs: list[dict[str, JsonPrimitive]] = []
-    for c in settings.LLM_SWARM:
-      is_ollama_cfg = c.get("api_key") == "ollama" or str(c.get("provider") or "").lower() == "ollama"
-      raw_mod = str(c.get("model_name") or c.get("model") or "")
-      norm_mod = resolve_ollama_model_alias(raw_mod) if is_ollama_cfg else str(c.get("model") or "")
-      norm_mod_name = resolve_ollama_model_alias(raw_mod) if is_ollama_cfg else raw_mod
-      raw_configs.append(
-        {
-          "provider": c.get("provider"),
-          "model": norm_mod,
-          "api_key": c.get("api_key"),
-          "api_base": str(c.get("api_base") or c.get("base_url") or "") or None,
-          "name": c.get("name"),
-          "model_name": norm_mod_name,
-          "is_local": bool(c.get("is_local", c.get("local", False))),
-        }
-      )
-
-    if gemma4_sql_enabled is True:
-      g_backend = gemma4_sql_backend or settings.GEMMA4_SQL_BACKEND
-      g_model = gemma4_sql_model_name or settings.GEMMA4_SQL_MODEL_NAME
-      raw_configs.append(
-        {
-          "provider": "gemma4sql",
-          "logical_provider": "gemma4sql",
-          "model": g_model,
-          "model_name": g_model,
-          "name": f"Gemma-4-SQL ({g_backend.upper()})",
-          "api_key": g_backend,
-          "api_base": gemma4_sql_api_base or settings.GEMMA4_SQL_API_BASE,
-          "is_local": True,
-        }
-      )
-
-    for entry in configured_models or []:
-      parsed = _parse_configured_model_entry(entry)
-      if parsed is not None:
-        prov, mod_name, disp_name = parsed
-        is_ollama = prov == "ollama"
-        is_gemma4 = prov == "gemma4sql"
-        raw_configs.append(
-          {
-            "provider": "openai" if is_ollama else prov,
-            "logical_provider": prov,
-            "model": mod_name,
-            "model_name": mod_name,
-            "name": disp_name,
-            "api_key": "ollama" if is_ollama else (gemma4_sql_backend or "mlx" if is_gemma4 else keys.get(prov)),
-            "api_base": (
-              f"{_normalize_ollama_root_url(ollama_api_base)}/v1"
-              if is_ollama
-              else (gemma4_sql_api_base if is_gemma4 else None)
-            ),
-            "is_local": is_ollama or is_gemma4,
-          }
-        )
-    return raw_configs
+    return build_raw_swarm_configs(
+      keys=keys,
+      configured_models=configured_models,
+      ollama_api_base=ollama_api_base,
+      gemma4_sql_enabled=gemma4_sql_enabled,
+      gemma4_sql_backend=gemma4_sql_backend,
+      gemma4_sql_model_name=gemma4_sql_model_name,
+      gemma4_sql_api_base=gemma4_sql_api_base,
+    )
 
   def init_swarm(
     self,
@@ -700,7 +660,8 @@ class LLMArenaClient:
         max_tokens=max_tokens,
         stop=stop,
       )
-      return _extract_completion_content(fallback_resp)
+      extracted_fb = _extract_completion_content(fallback_resp)
+      return extracted_fb.value if isinstance(extracted_fb, Ok) else None
     except Exception as fallback_exc:
       logger.warning(f"Lightweight Ollama fallback '{fallback_tag}' also failed: {fallback_exc}")
     return None
@@ -782,17 +743,21 @@ class LLMArenaClient:
 
       duration_ms = int((time.time() - start_time) * 1000)
 
-      try:
-        content = _extract_completion_content(response)
-        return ArenaResponse(provider_name=name, model_identifier=model_id, content=content, latency_ms=duration_ms)
-      except (AttributeError, IndexError, TypeError):
+      extracted = _extract_completion_content(response)
+      if isinstance(extracted, Ok):
         return ArenaResponse(
           provider_name=name,
           model_identifier=model_id,
-          content="",
+          content=extracted.value,
           latency_ms=duration_ms,
-          error="Malformed response structure",
         )
+      return ArenaResponse(
+        provider_name=name,
+        model_identifier=model_id,
+        content="",
+        latency_ms=duration_ms,
+        error=extracted.error.message,
+      )
 
     except Exception as e:
       if is_local_ollama:
@@ -922,7 +887,7 @@ class LLMArenaClient:
       "is_local": is_ollama,
     }
 
-  async def generate_arena_competition(
+  async def generate_arena_competition_result(
     self,
     messages: list[dict[str, str]],
     temperature: float = 0.0,
@@ -930,10 +895,9 @@ class LLMArenaClient:
     stop: list[str] | None = None,
     target_model_ids: list[str] | None = None,
     admin_settings: AdminSettingsResponse | None = None,
-  ) -> list[ArenaResponse]:
+  ) -> AppResult[list[ArenaResponse]]:
     """
-    Broadcasts the prompt to all configured LLMs concurrently.
-    Can be scoped to specific models via `target_model_ids`.
+    Broadcasts the prompt to all configured LLMs concurrently and returns an `AppResult[list[ArenaResponse]]`.
 
     Args:
         messages (list[dict[str, str]]): OpenAI-format history.
@@ -944,13 +908,16 @@ class LLMArenaClient:
         admin_settings (AdminSettingsResponse | None): Optional administrative settings.
 
     Returns:
-        list[ArenaResponse]: A list of results from every active model, including errors.
-
-    Raises:
-        RuntimeError: When `self.swarm` is empty.
+        AppResult[list[ArenaResponse]]: `Ok(results)` from active models, or `Err(AppError)` when no swarm is configured.
     """
     if not self.swarm:
-      raise RuntimeError("No LLM providers are configured in the Arena.")
+      return Err(
+        AppError(
+          code=ErrorCode.CONFIGURATION_ERROR,
+          message="No LLM providers are configured in the Arena.",
+          status_code=503,
+        )
+      )
 
     active_combatants = list(self.swarm)
     if target_model_ids:
@@ -966,7 +933,7 @@ class LLMArenaClient:
       active_combatants = matched
 
     if not active_combatants:
-      return []
+      return Ok([])
 
     if not target_model_ids and admin_settings and admin_settings.visible_models:
       active_combatants = [c for c in active_combatants if c["id"] in admin_settings.visible_models]
@@ -994,7 +961,46 @@ class LLMArenaClient:
           )
         )
 
-    return final_results
+    return Ok(final_results)
+
+  async def generate_arena_competition(
+    self,
+    messages: list[dict[str, str]],
+    temperature: float = 0.0,
+    max_tokens: int = 512,
+    stop: list[str] | None = None,
+    target_model_ids: list[str] | None = None,
+    admin_settings: AdminSettingsResponse | None = None,
+  ) -> list[ArenaResponse]:
+    """
+    Broadcasts the prompt to all configured LLMs concurrently.
+    Can be scoped to specific models via `target_model_ids`.
+
+    Args:
+        messages (list[dict[str, str]]): OpenAI-format history.
+        temperature (float): Determinism factor.
+        max_tokens (int): Length limit.
+        stop (list[str] | None): Stop sequences.
+        target_model_ids (list[str] | None): Optional list of specific model IDs to query.
+        admin_settings (AdminSettingsResponse | None): Optional administrative settings.
+
+    Returns:
+        list[ArenaResponse]: A list of results from every active model, including errors.
+
+    Raises:
+        RuntimeError: When `self.swarm` is empty.
+    """
+    res = await self.generate_arena_competition_result(
+      messages=messages,
+      temperature=temperature,
+      max_tokens=max_tokens,
+      stop=stop,
+      target_model_ids=target_model_ids,
+      admin_settings=admin_settings,
+    )
+    if isinstance(res, Err):
+      raise RuntimeError(res.error.message)
+    return res.value
 
   def _select_stream_combatant(
     self,

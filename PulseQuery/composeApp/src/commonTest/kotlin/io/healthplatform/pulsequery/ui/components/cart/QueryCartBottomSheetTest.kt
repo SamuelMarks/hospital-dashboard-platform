@@ -1,3 +1,6 @@
+/**
+ * Compose UI tests for [QueryCartBottomSheet] staged SQL query management and dashboard pinning.
+ */
 package io.healthplatform.pulsequery.ui.components.cart
 
 import androidx.compose.material3.MaterialTheme

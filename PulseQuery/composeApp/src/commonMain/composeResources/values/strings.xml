@@ -391,4 +391,23 @@
     <string name="table_header_value">Value</string>
     <string name="heatmap_insufficient_dimensions">Insufficient matrix dimensions for heatmap (requires at least 3 columns).</string>
     <string name="viz_incompat_banner_title">Visualization Not Applicable to SQL Result</string>
+    <string name="cart_add_widgets_fmt">Add %1$d Widgets to Dashboard</string>
+    <string name="cart_deploy_failed">Failed to deploy queries to dashboard</string>
+    <string name="save_query_select_target_dashboard">Select Target Dashboard</string>
+    <string name="save_query_loading_dashboards">Loading dashboards...</string>
+    <string name="save_query_visualization_fmt">Visualization: %1$s</string>
+    <string name="save_query_title_required">Title is required</string>
+    <string name="save_query_dashboard_required">Target dashboard is required</string>
+    <string name="save_query_failed">Failed to save query</string>
+    <string name="save_query_expand_dashboard_desc">Expand dashboard selection menu</string>
+    <string name="save_query_expand_visualization_desc">Expand visualization selection menu</string>
+    <string name="share_collaborators_count_fmt">Collaborators (%1$d)</string>
+    <string name="share_permission_fmt">Permission: %1$s</string>
+    <string name="share_revoke_access_fmt">Revoke access for %1$s</string>
+    <string name="wizard_default_value_fmt">Default: %1$s</string>
+    <string name="wizard_authoring_widget_fmt">Authoring: %1$s Widget</string>
+    <string name="edit_widget_markdown_content_label">Markdown Content</string>
+    <string name="edit_widget_http_url_label">HTTP Endpoint URL</string>
+    <string name="edit_widget_sql_query_label">SQL Query</string>
+    <string name="edit_widget_update_failed">Failed to update widget</string>
 </resources>

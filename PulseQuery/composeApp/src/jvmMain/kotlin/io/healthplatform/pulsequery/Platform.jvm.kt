@@ -4,6 +4,7 @@
 package io.healthplatform.pulsequery
 
 import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
 
 /**
  * Represents the JVM execution platform metadata.
@@ -37,7 +38,7 @@ actual fun getDefaultLocalHost(): String = "http://localhost:8000"
  * @return [Result] containing the absolute local file path on success, or [PulseQueryError.Storage] on failure.
  */
 actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray): Result<String> {
-    return runCatching {
+    return runCatchingPulse {
         val userHome = System.getProperty("user.home")
         val downloadsDir = java.io.File(userHome, "Downloads")
         if (!downloadsDir.exists()) {

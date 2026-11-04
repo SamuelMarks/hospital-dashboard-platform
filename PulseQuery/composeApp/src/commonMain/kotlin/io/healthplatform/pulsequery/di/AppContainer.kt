@@ -111,7 +111,11 @@ class AuthSessionManager {
         }
     }
 
-    /** Updates the active authenticated [UserResponse]. */
+    /**
+     * Updates the active authenticated [UserResponse].
+     *
+     * @param user Authenticated [UserResponse] or null when signed out.
+     */
     fun updateUser(user: UserResponse?) {
         _sessionState.update { it.copy(user = user) }
     }
@@ -128,7 +132,11 @@ class AuthSessionManager {
         }
     }
 
-    /** Clears all in-memory and persisted session state. */
+    /**
+     * Clears all in-memory and persisted session state.
+     *
+     * @param storage Optional [KeyValueStorage] from which persisted tokens are removed.
+     */
     fun clear(storage: KeyValueStorage?) {
         storage?.removeResult(AppContainer.KEY_AUTH_TOKEN)
         storage?.removeResult(AppContainer.KEY_REFRESH_TOKEN)
@@ -396,6 +404,12 @@ object AppContainer : AppDependencies, SessionConfigProvider {
         }
     }
 
+    /**
+     * Constructs the default [ApiServiceRegistry] bound to [baseUrl] and the active session token provider.
+     *
+     * @param baseUrl Base URL of the Pulse Query backend API.
+     * @return Newly constructed [ApiServiceRegistry] instance.
+     */
     private fun buildDefaultRegistry(baseUrl: String): ApiServiceRegistry {
         return ApiServiceRegistry(
             baseUrl = baseUrl,

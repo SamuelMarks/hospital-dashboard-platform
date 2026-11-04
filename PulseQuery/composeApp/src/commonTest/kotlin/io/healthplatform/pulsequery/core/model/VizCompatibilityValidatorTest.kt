@@ -48,7 +48,7 @@ class VizCompatibilityValidatorTest {
             rows = emptyList()
         )
         assertTrue(emptyCols.isSuccess)
-        val report = emptyCols.getOrNull()!!
+        val report = kotlin.test.assertNotNull(emptyCols.getOrNull())
         assertEquals(VisualizationType.PIE_CHART, report.visualization)
         assertTrue(report.isCompatible)
         assertNull(report.reason)

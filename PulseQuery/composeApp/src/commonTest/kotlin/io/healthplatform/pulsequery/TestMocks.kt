@@ -1,5 +1,9 @@
+/**
+ * Shared Ktor [MockEngine] fixtures, coroutine idle synchronization helpers, and fake API endpoints for multiplatform tests.
+ */
 package io.healthplatform.pulsequery
 
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockEngineConfig
@@ -102,7 +106,7 @@ fun createInspectingMockEngine(
                         headers = headersOf(HttpHeaders.ContentType, "application/json")
                     )
                 } else {
-                    val parsedEmail = runCatching {
+                    val parsedEmail = runCatchingPulse {
                         jsonParser.parseToJsonElement(bodyText)
                             .let { it as? kotlinx.serialization.json.JsonObject }
                             ?.get("email")

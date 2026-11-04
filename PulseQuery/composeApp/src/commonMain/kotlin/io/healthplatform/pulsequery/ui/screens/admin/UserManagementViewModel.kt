@@ -209,6 +209,14 @@ class UserManagementViewModel(
         updateRole(userId.value, newRole.wireValue)
     }
 
+    /**
+     * Filters [users] by case-insensitive email substring [query] and optional [role].
+     *
+     * @param users Complete list of [UserResponse] records to filter.
+     * @param query Email search substring.
+     * @param role Optional role filter string, or null to include all roles.
+     * @return Filtered list of matching [UserResponse] records.
+     */
     private fun filterUsers(
         users: List<UserResponse>,
         query: String,

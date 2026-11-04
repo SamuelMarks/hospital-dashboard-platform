@@ -391,4 +391,23 @@
     <string name="table_header_value">Valor</string>
     <string name="heatmap_insufficient_dimensions">Dimensiones de matriz insuficientes para el mapa de calor (requiere al menos 3 columnas).</string>
     <string name="viz_incompat_banner_title">Visualización no aplicable al resultado SQL</string>
+    <string name="cart_add_widgets_fmt">Añadir %1$d widgets al tablero</string>
+    <string name="cart_deploy_failed">Error al desplegar consultas en el tablero</string>
+    <string name="save_query_select_target_dashboard">Seleccionar tablero de destino</string>
+    <string name="save_query_loading_dashboards">Cargando tableros...</string>
+    <string name="save_query_visualization_fmt">Visualización: %1$s</string>
+    <string name="save_query_title_required">El título es obligatorio</string>
+    <string name="save_query_dashboard_required">El tablero de destino es obligatorio</string>
+    <string name="save_query_failed">Error al guardar la consulta</string>
+    <string name="save_query_expand_dashboard_desc">Expandir menú de selección de tablero</string>
+    <string name="save_query_expand_visualization_desc">Expandir menú de selección de visualización</string>
+    <string name="share_collaborators_count_fmt">Colaboradores (%1$d)</string>
+    <string name="share_permission_fmt">Permiso: %1$s</string>
+    <string name="share_revoke_access_fmt">Revocar acceso para %1$s</string>
+    <string name="wizard_default_value_fmt">Predeterminado: %1$s</string>
+    <string name="wizard_authoring_widget_fmt">Autoría: Widget %1$s</string>
+    <string name="edit_widget_markdown_content_label">Contenido Markdown</string>
+    <string name="edit_widget_http_url_label">URL de punto final HTTP</string>
+    <string name="edit_widget_sql_query_label">Consulta SQL</string>
+    <string name="edit_widget_update_failed">Error al actualizar el widget</string>
     </resources>

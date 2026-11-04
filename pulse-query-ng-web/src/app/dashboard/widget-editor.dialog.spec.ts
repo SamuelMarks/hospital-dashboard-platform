@@ -355,8 +355,10 @@ describe('WidgetEditorDialog', () => {
     fixture.detectChanges();
     const selects = fixture.debugElement.queryAll(By.css('mat-select'));
     expect(selects.length).toBeGreaterThanOrEqual(2);
-    selects[0]?.triggerEventHandler('ngModelChange', 'x');
-    selects[1]?.triggerEventHandler('ngModelChange', 'y');
+    selects.forEach((sel, idx) => {
+      sel.triggerEventHandler('selectionChange', { value: idx === 0 ? 'x' : 'y' });
+    });
+    expect(component.xKey()).toBeTruthy();
 
     const updateBtn = fixture.debugElement.query(By.css('button[mat-flat-button]'));
     updateBtn.triggerEventHandler('click', null);

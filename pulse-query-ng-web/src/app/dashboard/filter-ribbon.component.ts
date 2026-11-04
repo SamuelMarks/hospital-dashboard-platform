@@ -6,13 +6,11 @@
  * - Removed `ReactiveFormsModule`.
  */
 
-import { Component, DestroyRef, inject, OnInit, OnDestroy, signal, LOCALE_ID } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, LOCALE_ID } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { formatDate } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
-import { Subject, takeUntil } from 'rxjs';
 import { form } from '@angular/forms/signals';
-import { DATE_NOW } from '../core/time.token';
 
 // Material Imports
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -27,7 +25,7 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { DashboardStore } from './dashboard.store';
 
 /**
- * Component Class.
+ * Sticky dashboard filter ribbon synchronizing global department and date range filters with URL query parameters.
  */
 @Component({
   selector: 'app-filter-ribbon',
@@ -102,7 +100,7 @@ import { DashboardStore } from './dashboard.store';
     `,
   ],
 })
-export class FilterRibbonComponent implements OnInit, OnDestroy {
+export class FilterRibbonComponent implements OnInit {
   /** Access to dashboard state (global params). */
   public readonly store = inject(DashboardStore);
   /** Angular router used to persist global filter parameters in URL query strings. */
@@ -111,13 +109,8 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   /** Active application locale identifier. */
   private readonly localeId = inject(LOCALE_ID);
-  /** Injected clock provider returning the current Date instance. */
-  private readonly dateNow = inject(DATE_NOW);
   /** Angular DestroyRef for declarative RxJS stream teardown. */
   private readonly destroyRef = inject(DestroyRef);
-
-  /** Subject emitting on component destruction to tear down route query parameter subscriptions. */
-  private readonly destroy$ = new Subject<void>();
 
   /** Form model containing the current filter values. */
   readonly formModel = signal<{
@@ -139,24 +132,22 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
   /** Synchronizes global department and date range filter controls from route query parameters. */
   ngOnInit(): void {
     // Sync from Route to Form
-    this.route.queryParamMap
-      .pipe(takeUntil(this.destroy$), takeUntilDestroyed(this.destroyRef))
-      .subscribe((params) => {
-        const start = params.get('start_date');
-        const end = params.get('end_date');
-        const dept = params.get('dept');
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const start = params.get('start_date');
+      const end = params.get('end_date');
+      const dept = params.get('dept');
 
-        this.isSyncingFromRoute = true;
-        const val = this.formModel();
+      this.isSyncingFromRoute = true;
+      const val = this.formModel();
 
-        this.formModel.set({
-          ...val,
-          dept: dept || null,
-          startDate: start ? new Date(start) : null,
-          endDate: end ? new Date(end) : null,
-        });
-        this.isSyncingFromRoute = false;
+      this.formModel.set({
+        ...val,
+        dept: dept || null,
+        startDate: start ? new Date(start) : null,
+        endDate: end ? new Date(end) : null,
       });
+      this.isSyncingFromRoute = false;
+    });
   }
 
   /**
@@ -167,12 +158,6 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     this.formModel.update((m) => ({ ...m, dept: value }));
     if (this.isSyncingFromRoute) return;
     this.updateFilter('dept', value);
-  }
-
-  /** Completes the destruction subject to clean up route query parameter subscriptions. */
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 
   /**
@@ -195,7 +180,7 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     this.onDateChange();
   }
 
-  /** Handles date Change. */
+  /** Navigates with updated `start_date` and `end_date` query parameters when both bounds are populated. */
   onDateChange(): void {
     const s = this.formModel().startDate;
     const e = this.formModel().endDate;
@@ -212,7 +197,7 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Clear Filters. */
+  /** Clears all global department and date range filters from the URL query string. */
   clearFilters(): void {
     this.router.navigate([], {
       relativeTo: this.route,

@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [ChatViewModel] conversational AI arena, SSE token streaming, and query cart staging.
+ */
 package io.healthplatform.pulsequery.ui.screens.chat
 
 import io.healthplatform.pulsequery.api.apis.ChatApi

@@ -1,3 +1,6 @@
+/**
+ * Compose UI and matrix cell semantics tests for [HeatmapChart].
+ */
 package io.healthplatform.pulsequery.ui.components.charts
 
 import androidx.compose.material3.MaterialTheme

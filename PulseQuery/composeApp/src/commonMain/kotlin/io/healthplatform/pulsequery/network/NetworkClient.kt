@@ -61,6 +61,11 @@ fun createHttpClient(
 
         install(Logging) {
             logger = object : Logger {
+                /**
+                 * Forwards Ktor HTTP client diagnostic messages to [logWriter].
+                 *
+                 * @param message Diagnostic log line emitted by Ktor.
+                 */
                 override fun log(message: String) {
                     logWriter("HttpClient: $message")
                 }

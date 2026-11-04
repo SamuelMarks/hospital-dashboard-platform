@@ -3,6 +3,7 @@
  */
 package io.healthplatform.pulsequery.api.infrastructure
 
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -43,7 +44,7 @@ class OctetByteArray(val value: ByteArray) {
          */
         override fun deserialize(decoder: Decoder): OctetByteArray {
             val raw = decoder.decodeString()
-            val bytes = runCatching { raw.hexToByteArray() }.getOrElse { raw.encodeToByteArray() }
+            val bytes = runCatchingPulse { raw.hexToByteArray() }.getOrElse { raw.encodeToByteArray() }
             return OctetByteArray(bytes)
         }
     }

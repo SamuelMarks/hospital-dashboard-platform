@@ -423,8 +423,14 @@ class DashboardViewModel(
         var currentWidgetId = widget.id
         scope.launch {
             undoRedoManager.executeCommand(object : DashboardCommand {
+                /** Human-readable command label for deleting the widget. */
                 override val description: String = "Delete Widget ${widget.title}"
 
+                /**
+                 * Executes the widget deletion against the backend API and reloads the active dashboard.
+                 *
+                 * @return [Result] indicating completion or a [PulseQueryError] on failure.
+                 */
                 override suspend fun execute(): Result<Unit> = runResultPulseAsync {
                     currentDashboardsApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(currentWidgetId)
                         .asResultMap { loadDashboards() }
@@ -432,6 +438,11 @@ class DashboardViewModel(
                     _state.update { it.copy(errorMessage = errorPrefix + e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)) }
                 }
 
+                /**
+                 * Re-creates the deleted widget using its saved [WidgetIn] configuration and reloads the dashboard.
+                 *
+                 * @return [Result] indicating restoration completion or a [PulseQueryError] on failure.
+                 */
                 override suspend fun undo(): Result<Unit> = runResultPulseAsync {
                     currentDashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
                         dashboardId = widget.dashboardId,

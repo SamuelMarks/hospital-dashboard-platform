@@ -140,9 +140,15 @@ interface CollaborationSocketSession {
 fun WebSocketSession.asCollaborationSocketSession(): CollaborationSocketSession {
     val delegate = this
     return object : CollaborationSocketSession {
+        /** Channel of incoming WebSocket frames delegated from the underlying Ktor session. */
         override val incoming: ReceiveChannel<Frame>
             get() = delegate.incoming
 
+        /**
+         * Sends a UTF-8 text frame over the delegated Ktor [WebSocketSession].
+         *
+         * @param text Serialized JSON payload string to transmit.
+         */
         override suspend fun sendText(text: String) {
             delegate.send(Frame.Text(text))
         }

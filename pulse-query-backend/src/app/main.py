@@ -207,7 +207,12 @@ logger = logging.getLogger(__name__)
 
 
 def root() -> dict[str, str]:
-  """Health check endpoint for the API root."""
+  """
+  Health check endpoint for the API root.
+
+  Returns:
+      dict[str, str]: Welcome status message dictionary.
+  """
   return {"message": "Hospital Analytics Platform API is running"}
 
 

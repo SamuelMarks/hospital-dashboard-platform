@@ -18,14 +18,14 @@ interface DashboardCommand {
     /**
      * Executes or reapplies the mutation action.
      *
-     * @return [Result] containing [Unit] on success or exception on failure.
+     * @return [Result] containing [Unit] on success or [PulseQueryError] on failure.
      */
     suspend fun execute(): Result<Unit>
 
     /**
      * Reverts the mutation action back to its prior state.
      *
-     * @return [Result] containing [Unit] on success or exception on failure.
+     * @return [Result] containing [Unit] on success or [PulseQueryError] on failure.
      */
     suspend fun undo(): Result<Unit>
 }

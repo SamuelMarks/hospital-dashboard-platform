@@ -1,5 +1,9 @@
+/**
+ * Unit tests verifying failed authentication handling via the [Result] railway API.
+ */
 package io.healthplatform.pulsequery
 
+import io.healthplatform.pulsequery.core.result.asResultMap
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -20,14 +24,12 @@ class FailedLoginTest {
         AppContainer.currentBaseUrl = "http://localhost:8000"
         AppContainer.setHttpClientForTest(createMockClient())
 
-        val result = runCatching {
-            val loginResponse = AppContainer.authApi.loginAccessTokenApiV1AuthLoginPost(
-                username = "nonexistent@example.com",
-                password = "wrongpassword",
-                grantType = "password"
-            )
-            loginResponse.body().accessToken
-        }
+        val loginResponse = AppContainer.authApi.loginAccessTokenApiV1AuthLoginPost(
+            username = "nonexistent@example.com",
+            password = "wrongpassword",
+            grantType = "password"
+        )
+        val result = loginResponse.asResultMap { it.accessToken }
 
         assertTrue(result.isFailure, "Expected login with wrong credentials to fail")
         assertNotNull(result.exceptionOrNull())

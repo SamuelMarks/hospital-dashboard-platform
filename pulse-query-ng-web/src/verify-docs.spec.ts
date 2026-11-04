@@ -146,13 +146,17 @@ export type T2 = string;
       import { SIGNAL } from '@angular/core/primitives/signals';
       /** Bad type alias using any. */
       export type BadAny = any;
+      /** Cast value x. */
       export const x = (1 as unknown as string);
+      /** Cast value y. */
       export const y = (1 as number);
+      /** Component metadata fixture. */
       export const compMeta = {
         standalone: true,
         changeDetection: ChangeDetectionStrategy.OnPush,
         otherProp: 123,
       };
+      export const undocExportedVar = 42;
     `;
     const typeErrors = verifySourceFileText(forbiddenTypesSource, 'forbidden.ts');
     expect(typeErrors.some((e) => e.includes('@angular/core/primitives/signals'))).toBe(true);
@@ -166,6 +170,7 @@ export type T2 = string;
         e.includes("Forbidden 'changeDetection: ChangeDetectionStrategy.OnPush'"),
       ),
     ).toBe(true);
+    expect(typeErrors.some((e) => e.includes('variable undocExportedVar'))).toBe(true);
 
     // Direct verifyNodeDoc and verifyParameterDocs edge cases
     const emptySf = ts.createSourceFile('empty.ts', 'const a = 1;', ts.ScriptTarget.Latest, true);

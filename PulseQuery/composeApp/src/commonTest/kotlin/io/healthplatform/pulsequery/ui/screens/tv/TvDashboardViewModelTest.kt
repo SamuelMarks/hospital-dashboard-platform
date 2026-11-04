@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [TvDashboardViewModel] command-center kiosk carousel rotation and auto-refresh.
+ */
 package io.healthplatform.pulsequery.ui.screens.tv
 
 import io.healthplatform.pulsequery.api.apis.DashboardsApi

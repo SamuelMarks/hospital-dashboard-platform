@@ -1,3 +1,6 @@
+/**
+ * Compose UI and live-region tests for the system health and offline status banner.
+ */
 package io.healthplatform.pulsequery.ui.screens
 
 import androidx.compose.material3.MaterialTheme

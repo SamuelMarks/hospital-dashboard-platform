@@ -1,3 +1,6 @@
+/**
+ * JVM SQLite unit tests for [createDatabaseResult], [JvmDatabaseDriverFactory], and [AppContainer.initDatabase].
+ */
 package io.healthplatform.pulsequery.database
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver

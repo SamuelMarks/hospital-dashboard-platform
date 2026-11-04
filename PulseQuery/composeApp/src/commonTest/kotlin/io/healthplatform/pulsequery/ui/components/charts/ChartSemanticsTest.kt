@@ -1,3 +1,6 @@
+/**
+ * Accessibility semantics and Compose UI tests for chart and visualization components.
+ */
 package io.healthplatform.pulsequery.ui.components.charts
 
 import androidx.compose.material3.MaterialTheme

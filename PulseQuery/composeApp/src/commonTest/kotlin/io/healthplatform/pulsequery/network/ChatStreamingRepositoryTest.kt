@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [ChatStreamingRepository] Server-Sent Events (SSE) token streaming and error recovery.
+ */
 package io.healthplatform.pulsequery.network
 
 import io.healthplatform.pulsequery.di.AppContainer

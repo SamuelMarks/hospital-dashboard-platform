@@ -52,7 +52,7 @@
   </div>
 
   <!-- Custom Hex Input -->
-  <form (submit)="$event.preventDefault()" class="mb-4">
+  <form [formRoot]="hexForm" class="mb-4">
     <span i18n class="text-xs font-semibold uppercase tracking-wider text-secondary mb-2 block">
       Custom Color Seed
     </span>

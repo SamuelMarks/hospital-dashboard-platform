@@ -34,15 +34,7 @@ export default defineConfig({
       all: true,
       allowExternal: true,
       include: ["src/**/*.ts", "**/scripts/verify_docs.ts"],
-      exclude: [
-        "src/**/*.spec.ts",
-        "src/setup-storage.ts",
-        "src/test-utils/**",
-        "src/main.server.ts",
-        "src/app/app.config.server.ts",
-        "src/app/app.routes.server.ts",
-        "**/*.d.ts",
-      ],
+      exclude: ["src/**/*.spec.ts", "src/test-utils/**", "**/*.d.ts"],
       reporter: ["text", "html"],
       reportOnFailure: true,
       thresholds: {

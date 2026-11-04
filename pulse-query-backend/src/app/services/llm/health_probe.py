@@ -69,7 +69,7 @@ def check_duckdb_readonly_ready() -> bool:
       return row is not None and row[0] == 1
     finally:
       conn.close()
-  except Exception:
+  except (OSError, RuntimeError, ValueError, TypeError, Exception):
     return False
 
 

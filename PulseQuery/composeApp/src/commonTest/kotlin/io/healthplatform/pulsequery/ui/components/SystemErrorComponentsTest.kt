@@ -1,3 +1,6 @@
+/**
+ * Compose UI and live-region accessibility tests for [SystemErrorComponents].
+ */
 package io.healthplatform.pulsequery.ui.components
 
 import androidx.compose.material3.MaterialTheme

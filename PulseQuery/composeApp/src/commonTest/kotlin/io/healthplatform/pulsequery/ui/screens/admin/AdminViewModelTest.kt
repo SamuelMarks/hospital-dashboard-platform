@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [AdminViewModel] LLM provider configuration, API key management, and DuckDB ingestion.
+ */
 package io.healthplatform.pulsequery.ui.screens.admin
 
 import io.healthplatform.pulsequery.api.apis.AdminApi

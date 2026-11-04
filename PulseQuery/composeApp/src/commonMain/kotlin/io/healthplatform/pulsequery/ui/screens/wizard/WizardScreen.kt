@@ -98,6 +98,8 @@ import pulsequery.composeapp.generated.resources.widget_created_success
 import pulsequery.composeapp.generated.resources.widget_subtitle_label
 import pulsequery.composeapp.generated.resources.widget_subtitle_placeholder
 import pulsequery.composeapp.generated.resources.widget_title
+import pulsequery.composeapp.generated.resources.wizard_authoring_widget_fmt
+import pulsequery.composeapp.generated.resources.wizard_default_value_fmt
 
 /**
  * Resolves the active [WizardViewModel], returning [viewModel] when provided or creating a scoped instance.
@@ -901,7 +903,7 @@ private fun WizardParameterSupportingText(
     if (error != null) {
         Text(error)
     } else if (defaultValue.isNotBlank()) {
-        Text("Default: $defaultValue")
+        Text(stringResource(Res.string.wizard_default_value_fmt, defaultValue))
     }
 }
 
@@ -975,7 +977,7 @@ fun CustomWidgetConfigurationContent(
     ) {
         item {
             Text(
-                text = "Authoring: ${state.creationType} Widget",
+                text = stringResource(Res.string.wizard_authoring_widget_fmt, state.creationType),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )

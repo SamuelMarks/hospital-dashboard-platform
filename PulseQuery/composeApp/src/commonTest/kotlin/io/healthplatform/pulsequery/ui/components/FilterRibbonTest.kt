@@ -1,3 +1,6 @@
+/**
+ * Compose UI and semantics tests for [FilterRibbon].
+ */
 package io.healthplatform.pulsequery.ui.components
 
 import androidx.compose.material3.MaterialTheme

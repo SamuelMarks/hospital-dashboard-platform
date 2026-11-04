@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [UserManagementViewModel] user directory filtering, RBAC role updates, and status toggles.
+ */
 package io.healthplatform.pulsequery.ui.screens.admin
 
 import io.healthplatform.pulsequery.di.AppContainer

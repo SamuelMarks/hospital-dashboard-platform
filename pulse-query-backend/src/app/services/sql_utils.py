@@ -269,7 +269,7 @@ def normalize_sql(sql: str, dialect: str = _DEF_DIALECT) -> str:
   try:
     parsed = sqlglot.parse_one(cleaned, read=dialect)
     return str(parsed.sql(dialect=dialect, pretty=False))
-  except Exception:
+  except (sqlglot.errors.SqlglotError, ValueError, TypeError, Exception):
     return re.sub(r"\s+", " ", cleaned).strip().lower()
 
 

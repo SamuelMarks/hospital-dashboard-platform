@@ -4,6 +4,7 @@
 package io.healthplatform.pulsequery
 
 import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import okio.ByteString.Companion.toByteString
 
 /**
@@ -73,7 +74,7 @@ internal fun saveWasmFileWithBridge(
     bytes: ByteArray,
     bridge: (String, String, String) -> Unit = ::triggerWasmBrowserDownload
 ): Result<String> {
-    return runCatching {
+    return runCatchingPulse {
         val base64 = bytes.toByteString().base64()
         bridge(filename, mimeType, base64)
         "Downloaded $filename ($mimeType)"

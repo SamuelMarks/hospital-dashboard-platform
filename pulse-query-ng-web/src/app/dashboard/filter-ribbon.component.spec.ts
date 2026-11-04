@@ -144,7 +144,10 @@ describe('FilterRibbonComponent', () => {
   });
 
   it('should cleanup subscriptions on destroy', () => {
-    component.ngOnDestroy();
-    expect(true).toBe(true);
+    fixture.destroy();
+    queryParamsSub.next({
+      get: (key: string) => (key === 'dept' ? 'Emergency' : null),
+    });
+    expect(component.formModel().dept).toBeNull();
   });
 });

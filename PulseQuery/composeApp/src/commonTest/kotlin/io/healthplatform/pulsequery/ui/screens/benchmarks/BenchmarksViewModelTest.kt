@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [BenchmarksViewModel] clinical SQL and hospital optimization benchmark execution.
+ */
 package io.healthplatform.pulsequery.ui.screens.benchmarks
 
 import io.healthplatform.pulsequery.api.apis.BenchmarksApi

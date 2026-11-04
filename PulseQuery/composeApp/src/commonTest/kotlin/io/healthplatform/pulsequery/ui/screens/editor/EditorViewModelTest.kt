@@ -1,3 +1,6 @@
+/**
+ * Unit tests for [EditorViewModel] ad-hoc SQL and HTTP widget creation, AI SQL generation, and validation.
+ */
 package io.healthplatform.pulsequery.ui.screens.editor
 
 import io.healthplatform.pulsequery.api.apis.AiApi
