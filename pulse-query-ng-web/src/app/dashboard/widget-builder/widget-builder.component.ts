@@ -174,6 +174,8 @@ export class WidgetBuilderComponent implements OnInit {
   readonly executionResult = this.builderStore.executionResult;
   /** Strongly typed computed table dataset derived from `executionResult`. */
   readonly previewTableData = this.builderStore.previewTableData;
+  /** SQL-to-visualization compatibility evaluation for the active draft widget. */
+  readonly vizCompatibility = this.builderStore.vizCompatibility;
   /** Active Tab Index. */
   readonly selectedTab = this.builderStore.selectedTab;
   /** Computed widget snapshot merging `draftWidget` with `vizFormModel`. */

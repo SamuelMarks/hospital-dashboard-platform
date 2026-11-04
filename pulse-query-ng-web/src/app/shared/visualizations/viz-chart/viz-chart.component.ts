@@ -1,12 +1,12 @@
 /**
- * @fileoverview Responsive bar and stacked-column chart visualization component
+ * @fileoverview Responsive bar, stacked-column, and trend-line chart visualization component
  * with dynamic Material 3 theme palette integration and threshold reference lines.
  */
 
 import { Component, input, computed, inject, effect, signal, PLATFORM_ID } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { ThemeService } from '../../../core/theme/theme.service';
-import { inferChartAxisKeys } from '../viz-axis-inference.utils';
+import { inferChartAxisKeys, toFiniteNumber } from '../viz-axis-inference.utils';
 
 /**
  * Configuration for reference lines (e.g. thresholds).
@@ -55,7 +55,7 @@ export interface ProcessedReferenceLine {
 /**
  * Internal representation for chart rendering logic.
  */
-interface ChartItem {
+export interface ChartItem {
   /** Stacked bar segments when `isStacked` is true. */
   segments?: {
     label: string;
@@ -66,25 +66,28 @@ interface ChartItem {
   }[];
   /** Category label displayed on the X-axis. */
   label: string;
-  /** Total numeric value represented by the bar. */
+  /** Total numeric value represented by the bar or line point. */
   value: number;
   /** CSS height percentage string for non-stacked bars. */
   heightPct: string;
   /** CSS bottom offset percentage string relative to the zero baseline. */
   bottomPct: string;
-  /** CSS bottom offset percentage string for the top of the bar (used by value badges). */
+  /** CSS bottom offset percentage string for the top of the bar or line marker (used by value badges). */
   topPct: string;
-  /** Whether the bar represents a negative numeric value. */
+  /** Numeric 0-100 Y position from the bottom of the plot area used for line chart points. */
+  pointBottomNum: number;
+  /** Whether the bar or point represents a negative numeric value. */
   isNegative: boolean;
   /** Whether the bar is composed of multiple stacked segments. */
   isStacked: boolean;
 }
 
 /**
- * Visualization: Bar/Column Chart.
+ * Visualization: Bar/Column and Line/Trend Chart.
  *
  * **Updates**:
  * - Consumes Runtime CSS Variables for chart colors via `ThemeService`.
+ * - Supports both `'bar'` and `'line'` rendering modes.
  * - Reacts to theme changes instantly without reloading.
  */
 @Component({
@@ -162,6 +165,31 @@ interface ChartItem {
       }
       .col-wrapper:hover .bar {
         opacity: 0.8;
+      }
+
+      .line-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 8;
+        overflow: visible;
+      }
+      .line-point {
+        position: absolute;
+        left: 50%;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        transform: translate(-50%, 50%);
+        border: 2px solid var(--sys-surface, #ffffff);
+        z-index: 12;
+        transition: transform 0.2s;
+      }
+      .col-wrapper:hover .line-point,
+      .col-wrapper:focus-within .line-point {
+        transform: translate(-50%, 50%) scale(1.35);
       }
 
       .x-axis {
@@ -252,6 +280,8 @@ export class VizChartComponent {
   >(null);
   /** Optional chart axis and stacking configuration. */
   readonly config = input<ChartConfig | undefined>();
+  /** Visual rendering mode (`'bar'` for vertical/stacked bars, `'line'` for connected trend line). */
+  readonly mode = input<'bar' | 'line'>('bar');
 
   /** Injected DOM document reference used to read computed CSS custom properties. */
   private readonly document = inject(DOCUMENT);
@@ -270,14 +300,11 @@ export class VizChartComponent {
    * Initializes the reactive theme effect to synchronize chart colors with DOM CSS variables.
    */
   constructor() {
-    // Reads CSS variables whenever theme changes
     effect(() => {
-      // Dependency trigger
       this.themeService.seedColor();
       this.themeService.isDark();
 
       if (isPlatformBrowser(this.platformId)) {
-        // Small delay to allow Paint to settle variables
         requestAnimationFrame(() => this.updatePaletteFromDom());
       }
     });
@@ -289,7 +316,6 @@ export class VizChartComponent {
   updatePaletteFromDom(): void {
     const style = getComputedStyle(this.document.documentElement);
 
-    // We expect these to be populated by ThemeService/ColorUtils
     const p1 = style.getPropertyValue('--chart-color-1').trim() || '#1976d2';
     const p2 = style.getPropertyValue('--chart-color-2').trim() || '#585e71';
     const p3 = style.getPropertyValue('--chart-color-3').trim() || '#735471';
@@ -330,6 +356,9 @@ export class VizChartComponent {
     const yName = y || $localize`Value`;
     const xName = x || $localize`Category`;
     const count = this.processedData().length;
+    if (this.mode() === 'line') {
+      return $localize`Line chart: ${yName} by ${xName} (${count} items)`;
+    }
     return $localize`Bar chart: ${yName} by ${xName} (${count} items)`;
   });
 
@@ -340,15 +369,33 @@ export class VizChartComponent {
     const ds = this.dataSet();
     const { x, y, stack } = this.axisKeys();
 
-    // Dependency on palette ensures re-computation on theme change
     this.palette();
 
     if (!ds || !x || !y) return [];
 
-    if (stack) {
+    if (stack && this.mode() === 'bar') {
       return this.processStackedData(ds.data, x, y, stack);
     }
     return this.processSimpleData(ds.data, x, y);
+  });
+
+  /**
+   * Computes SVG `<polyline>` coordinate string (`"x1,y1 x2,y2 ..."`) in a `0..100` viewBox
+   * when `mode() === 'line'`.
+   */
+  readonly linePolylinePoints = computed<string>(() => {
+    const items = this.processedData();
+    if (items.length === 0) {
+      return '';
+    }
+    const n = items.length;
+    return items
+      .map((item, idx) => {
+        const xCoord = n === 1 ? 50 : ((idx + 0.5) / n) * 100;
+        const yCoord = 100 - item.pointBottomNum;
+        return `${xCoord.toFixed(2)},${yCoord.toFixed(2)}`;
+      })
+      .join(' ');
   });
 
   /**
@@ -373,18 +420,18 @@ export class VizChartComponent {
 
     let min = 0;
     let max = this.getRefMax();
-    if (stack) {
+    if (stack && this.mode() === 'bar') {
       const totals: Record<string, number> = {};
       ds.data.forEach((r) => {
         const xVal = String(r[x]);
-        const yVal = Math.max(0, Number(r[y]) || 0);
+        const yVal = Math.max(0, toFiniteNumber(r[y]) ?? 0);
         totals[xVal] = (totals[xVal] || 0) + yVal;
       });
       Object.values(totals).forEach((t) => {
         if (t > max) max = t;
       });
     } else {
-      const values = ds.data.map((r) => Number(r[y]) || 0);
+      const values = ds.data.map((r) => toFiniteNumber(r[y]) ?? 0);
       min = Math.min(...values, 0);
       max = Math.max(...values, 0, max);
     }
@@ -403,9 +450,9 @@ export class VizChartComponent {
   });
 
   /**
-   * Processing Strategy for Standard Bar Charts.
+   * Processing Strategy for Standard Bar and Line Charts.
    *
-   * @param rows - Array of data records to transform into bar items.
+   * @param rows - Array of data records to transform into chart items.
    * @param xKey - Column name providing category labels on the X-axis.
    * @param yKey - Column name providing numeric heights on the Y-axis.
    * @returns Array of normalized `ChartItem` entries for template rendering.
@@ -415,21 +462,20 @@ export class VizChartComponent {
     xKey: string,
     yKey: string,
   ): ChartItem[] {
-    const values = rows.map((r) => Number(r[yKey]) || 0);
+    const values = rows.map((r) => toFiniteNumber(r[yKey]) ?? 0);
     const min = Math.min(...values, 0);
     const max = Math.max(...values, 0, this.getRefMax());
     const range = max - min || 10;
 
-    // Calculate where "Zero" sits in percentage terms relative to min
     const zeroPct = ((0 - min) / range) * 100;
 
     return rows.map((row) => {
-      const val = Number(row[yKey]) || 0;
+      const val = toFiniteNumber(row[yKey]) ?? 0;
       const isNeg = val < 0;
       const hPct = (Math.abs(val) / range) * 100;
 
-      // If negative, bottom starts at (zeroPct - height). If positive, starts at zeroPct.
       const bPct = isNeg ? zeroPct - hPct : zeroPct;
+      const pointBottom = isNeg ? bPct : bPct + hPct;
       const tPct = isNeg ? zeroPct : Math.min(92, bPct + hPct);
 
       return {
@@ -438,6 +484,7 @@ export class VizChartComponent {
         heightPct: `${hPct}%`,
         bottomPct: `${bPct}%`,
         topPct: `${tPct}%`,
+        pointBottomNum: Math.max(0, Math.min(100, pointBottom)),
         isNegative: isNeg,
         isStacked: false,
       };
@@ -466,11 +513,10 @@ export class VizChartComponent {
     rows.forEach((r) => {
       const xVal = String(r[xKey]);
       const stackVal = String(r[stackKey]);
-      const yVal = Math.max(0, Number(r[yKey]) || 0);
+      const yVal = Math.max(0, toFiniteNumber(r[yKey]) ?? 0);
 
       if (!groups[xVal]) groups[xVal] = [];
       if (!colorMap[stackVal]) {
-        // Use dynamic palette logic
         colorMap[stackVal] = this.getPalette(ci++);
       }
 
@@ -501,7 +547,8 @@ export class VizChartComponent {
         return segment;
       });
 
-      const totalTopPct = Math.min(92, (currentBottom / scale) * 100);
+      const pctOfMax = (currentBottom / scale) * 100;
+      const totalTopPct = Math.min(92, pctOfMax);
 
       return {
         label: xLabel,
@@ -509,6 +556,7 @@ export class VizChartComponent {
         heightPct: '',
         bottomPct: '',
         topPct: `${totalTopPct}%`,
+        pointBottomNum: Math.max(0, Math.min(100, pctOfMax)),
         isNegative: false,
         isStacked: true,
         segments: segments.reverse(),

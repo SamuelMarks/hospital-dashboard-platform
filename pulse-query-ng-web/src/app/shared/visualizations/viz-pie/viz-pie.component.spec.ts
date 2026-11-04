@@ -157,7 +157,7 @@ describe('VizPieComponent', () => {
     expect(slice?.percentage).toBe(100);
   });
 
-  it('should clamp negative values to zero in totals', () => {
+  it('should return empty slices when all values are zero or negative', () => {
     const data = {
       columns: ['L', 'V'],
       data: [
@@ -169,7 +169,27 @@ describe('VizPieComponent', () => {
     fixture.detectChanges();
 
     const slices = component.slices();
-    expect(slices[0]?.percentage).toBe(0);
+    expect(slices.length).toBe(0);
+    expect(fixture.debugElement.query(By.css('[data-testid="pie-empty-state"]'))).toBeTruthy();
+  });
+
+  it('should coerce numeric string values and handle non-numeric values as zero when positive slice exists', () => {
+    const data = {
+      columns: ['L', 'V'],
+      data: [
+        { L: 'A', V: '75' },
+        { L: 'A', V: '25' },
+        { L: 'C', V: 'not-a-number' },
+      ],
+    };
+    fixture.componentRef.setInput('dataSet', data);
+    fixture.detectChanges();
+
+    const slices = component.slices();
+    expect(slices.length).toBe(3);
+    expect(slices[0]?.percentage).toBe(75);
+    expect(slices[1]?.percentage).toBe(25);
+    expect(slices[2]?.percentage).toBe(0);
   });
 
   it('should automatically select the first numeric column when column 1 is a string', () => {
@@ -189,9 +209,20 @@ describe('VizPieComponent', () => {
     expect(slices[1]?.percentage).toBe(40);
   });
 
-  it('should update palette from DOM', () => {
+  it('should update palette from DOM with custom CSS variables and fallback colors', () => {
+    const customStyle = document.createElement('div').style;
+    customStyle.setProperty('--chart-color-1', '#112233');
+    customStyle.setProperty('--chart-color-2', '#445566');
+    customStyle.setProperty('--chart-color-3', '#778899');
+    const styleSpy = vi.spyOn(window, 'getComputedStyle').mockReturnValue(customStyle);
     component.updatePaletteFomDom();
-    expect(component.palette()).toBeTruthy();
+    expect(component.palette().slice(0, 3)).toEqual(['#112233', '#445566', '#778899']);
+
+    const emptyStyle = document.createElement('div').style;
+    styleSpy.mockReturnValue(emptyStyle);
+    component.updatePaletteFomDom();
+    expect(component.palette().slice(0, 3)).toEqual(['#1976d2', '#00796b', '#fbc02d']);
+    styleSpy.mockRestore();
   });
 
   it('should skip palette update when platform is not browser', async () => {

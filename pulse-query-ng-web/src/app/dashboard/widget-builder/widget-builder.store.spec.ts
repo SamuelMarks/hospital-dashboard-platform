@@ -345,4 +345,83 @@ describe('WidgetBuilderStore', () => {
       'server-99',
     );
   });
+
+  it('computes vizCompatibility across null draft, SQL query pre-check, previewTableData, and dashboardStore fallback', () => {
+    store.draftWidget.set(null);
+    store.executionResult.set(null);
+    expect(store.vizCompatibility().compatible).toBe(true);
+    expect(store.isPie()).toBe(false);
+    expect(store.showAxesConfig()).toBe(false);
+
+    // SQL draft without executionResult falls back to static SQL query check
+    store.draftWidget.set({
+      id: LOCAL_DRAFT_WIDGET_ID,
+      dashboard_id: 'd1',
+      title: 'Scalar SQL on Pie',
+      type: 'SQL',
+      visualization: 'pie_chart',
+      config: { query: 'SELECT COUNT(*) FROM hospital_data' },
+    });
+    expect(store.vizCompatibility().compatible).toBe(false);
+    expect(store.vizCompatibility().code).toBe('SINGLE_SCALAR_SQL_FOR_MULTI_AXIS_VIZ');
+
+    // SQL draft with empty query
+    store.draftWidget.set({
+      id: LOCAL_DRAFT_WIDGET_ID,
+      dashboard_id: 'd1',
+      title: 'Empty SQL',
+      type: 'SQL',
+      visualization: 'table',
+      config: { query: '   ' },
+    });
+    expect(store.vizCompatibility().compatible).toBe(true);
+
+    // Non-SQL query property
+    store.draftWidget.set({
+      id: LOCAL_DRAFT_WIDGET_ID,
+      dashboard_id: 'd1',
+      title: 'Non-string SQL',
+      type: 'SQL',
+      visualization: 'table',
+      config: {},
+    });
+    expect(store.vizCompatibility().compatible).toBe(true);
+
+    // HTTP draft widget in vizCompatibility
+    store.draftWidget.set({
+      id: LOCAL_DRAFT_WIDGET_ID,
+      dashboard_id: 'd1',
+      title: 'HTTP Widget',
+      type: 'HTTP',
+      visualization: 'metric',
+      config: {},
+    });
+    expect(store.vizCompatibility().compatible).toBe(true);
+
+    // executionResult with undefined columns/data
+    store.executionResult.set(
+      {} as unknown as { columns: string[]; data: Record<string, unknown>[] },
+    );
+    expect(store.previewTableData()).toEqual({ columns: [], data: [] });
+    store.executionResult.set(null);
+
+    // DashboardStore fallback in previewTableData when executionResult is null
+    mockDashboardStore.dataMap.set({
+      'server-1': {
+        columns: ['only_col'],
+        data: [{ only_col: 10 }],
+      } as unknown as { columns?: string[] },
+    });
+    store.draftWidget.set({
+      id: 'server-1',
+      dashboard_id: 'd1',
+      title: 'Server Pie',
+      type: 'SQL',
+      visualization: 'pie_chart',
+      config: { query: 'SELECT 1' },
+    });
+    expect(store.previewTableData().columns).toEqual(['only_col']);
+    expect(store.vizCompatibility().compatible).toBe(false);
+    expect(store.vizCompatibility().code).toBe('INCOMPATIBLE_TOO_FEW_COLUMNS');
+  });
 });

@@ -1274,14 +1274,14 @@ fun WidgetContent(
                 )
             }
             else -> {
-                when (widget.visualization.lowercase()) {
-                    "bar", "barchart", "bar_chart" -> BarChart(data = data)
-                    "line", "linechart", "line_chart" -> LineChart(data = data)
-                    "pie", "donut" -> PieChart(data = data)
-                    "metric", "scalar" -> MetricCard(data = data)
-                    "heatmap", "matrix" -> HeatmapChart(columns = tableColumns, rows = tableRows)
-                    "markdown", "text", "note" -> TextMarkdownWidget(content = formatMarkdownPairsContent(data))
-                    else -> {
+                when (VisualizationType.fromWire(widget.visualization)) {
+                    VisualizationType.BAR_CHART -> BarChart(data = data)
+                    VisualizationType.LINE_CHART -> LineChart(data = data)
+                    VisualizationType.PIE_CHART -> PieChart(data = data)
+                    VisualizationType.METRIC, VisualizationType.SCALAR -> MetricCard(data = data)
+                    VisualizationType.HEATMAP -> HeatmapChart(columns = tableColumns, rows = tableRows)
+                    VisualizationType.MARKDOWN -> TextMarkdownWidget(content = formatMarkdownPairsContent(data))
+                    VisualizationType.TABLE -> {
                         if (tableColumns.size > 2) {
                             MultiColumnTableView(columns = tableColumns, rows = tableRows)
                         } else {

@@ -13,10 +13,17 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import _is_filesystem_path
 from app.core.result import AppResult, Err, Ok, unwrap_or_raise_http
 from app.models.admin_setting import AdminSetting
 from app.schemas.admin import AdminSettingsResponse, AdminSettingsUpdateRequest
 from app.schemas.json_types import JsonValue
+from app.services.llm.discovery import (
+  OLLAMA_CHOICE_MODEL_ALIASES,
+  _parse_configured_model_entry,
+  normalize_ollama_tag_key,
+  resolve_ollama_model_alias,
+)
 from app.services.llm_client import llm_client
 
 logger = logging.getLogger(__name__)
@@ -31,6 +38,57 @@ _ADMIN_SETTING_KEYS: tuple[str, ...] = (
   "gemma4_sql_model_name",
   "gemma4_sql_api_base",
 )
+
+
+def _sanitize_persisted_model_entries(raw_items: list[str], is_configured_list: bool = False) -> list[str]:
+  """
+  Sanitizes persisted `visible_models` or `configured_models` entries by stripping filesystem paths,
+  resolving legacy Ollama choice-model aliases (`gemma4:latest` -> `gemma:2b`), and deduplicating.
+
+  Args:
+      raw_items (list[str]): Raw string list stored in PostgreSQL `system_settings`.
+      is_configured_list (bool): Whether the list represents `configured_models` (`provider:model`).
+
+  Returns:
+      list[str]: Cleaned, deduplicated list of model identifiers.
+  """
+  sanitized: list[str] = []
+  seen_keys: set[str] = set()
+  for item in raw_items:
+    cleaned = str(item).strip()
+    if not cleaned:
+      continue
+    id_part = cleaned.split("|", 1)[0].strip()
+    model_part = id_part.split("/", 1)[-1].split(":", 1)[-1] if ("/" in id_part or ":" in id_part) else id_part
+    if _is_filesystem_path(id_part) or _is_filesystem_path(model_part):
+      continue
+
+    if is_configured_list:
+      parsed = _parse_configured_model_entry(cleaned)
+      if parsed is None:
+        continue
+      prov, mod_name, disp_name = parsed
+      sep = "/" if ("/" in id_part and (":" not in id_part or id_part.find("/") < id_part.find(":"))) else ":"
+      normalized = f"{prov}:{mod_name}|{disp_name}" if "|" in cleaned else f"{prov}{sep}{mod_name}"
+      dedup_key = f"ollama:{normalize_ollama_tag_key(mod_name)}" if prov == "ollama" else f"{prov}:{mod_name}"
+    elif id_part.lower().startswith(("ollama:", "ollama/")):
+      sep = ":" if id_part.lower().startswith("ollama:") else "/"
+      resolved_tag = resolve_ollama_model_alias(id_part)
+      normalized = f"ollama{sep}{resolved_tag}"
+      dedup_key = f"ollama:{normalize_ollama_tag_key(resolved_tag)}"
+    elif id_part.lower() in OLLAMA_CHOICE_MODEL_ALIASES:
+      resolved_tag = resolve_ollama_model_alias(id_part)
+      normalized = f"ollama:{resolved_tag}"
+      dedup_key = f"ollama:{normalize_ollama_tag_key(resolved_tag)}"
+    else:
+      normalized = cleaned
+      dedup_key = normalized
+
+    if dedup_key not in seen_keys:
+      sanitized.append(normalized)
+      seen_keys.add(dedup_key)
+
+  return sanitized
 
 
 class AdminService:
@@ -71,9 +129,11 @@ class AdminService:
       if key == "api_keys":
         api_keys = {str(k): str(v) for k, v in raw_val.items()} if isinstance(raw_val, dict) else {}
       elif key == "visible_models":
-        visible_models = [str(item) for item in raw_val] if isinstance(raw_val, list) else []
+        raw_vis = [str(item) for item in raw_val] if isinstance(raw_val, list) else []
+        visible_models = _sanitize_persisted_model_entries(raw_vis, is_configured_list=False)
       elif key == "configured_models":
-        configured_models = [str(item) for item in raw_val] if isinstance(raw_val, list) else []
+        raw_cfg = [str(item) for item in raw_val] if isinstance(raw_val, list) else []
+        configured_models = _sanitize_persisted_model_entries(raw_cfg, is_configured_list=True)
       elif key == "ollama_api_base":
         ollama_api_base = str(raw_val) if isinstance(raw_val, str) and raw_val.strip() else None
       elif key == "gemma4_sql_enabled":

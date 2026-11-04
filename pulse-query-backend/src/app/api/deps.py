@@ -153,6 +153,29 @@ async def get_current_user(
 get_current_user_from_header_or_query = get_current_user
 
 
+async def get_optional_current_user(
+  db: Annotated[AsyncSession, Depends(get_db)],
+  header_token: Annotated[str | None, Depends(oauth2_scheme)] = None,
+  token: Annotated[str | None, Query(description="JWT token query parameter for direct browser downloads")] = None,
+) -> User | None:
+  """
+  Dependency that resolves the current authenticated user if a token is provided,
+  or returns `None` when no credentials are supplied.
+
+  Args:
+      db (AsyncSession): The database session dependency.
+      header_token (str | None): Optional OAuth2 access token extracted from the request header.
+      token (str | None): Optional JWT token supplied via URL query string.
+
+  Returns:
+      User | None: Authenticated `User` model instance if a valid token is present, otherwise `None`.
+  """
+  active_token = header_token or token
+  if not active_token:
+    return None
+  return await _resolve_user_from_token(active_token, db)
+
+
 def check_user_role_result(current_user: User, allowed_roles: tuple[str, ...]) -> AppResult[User]:
   """
   Validates that `current_user` holds one of `allowed_roles` or super-admin privileges.

@@ -160,4 +160,102 @@ test.describe("Dashboard Builder Workflow", () => {
       page.locator('[data-testid="add-widget-cta-card"]'),
     ).toBeVisible();
   });
+
+  /**
+   * Tests all SQL widget visualizations (Pie Chart, Line Chart, Bar Chart, Heatmap, Scalar, Metric, Table)
+   * and verifies SQL-to-visualization incompatibility validation in the Widget Builder and Dashboard.
+   */
+  test("should render all SQL widget visualizations and validate incompatible SQL-to-visualization pairings", async ({
+    page,
+    request,
+  }) => {
+    // Seed a dashboard via API with Pie Chart, Line Chart, Heatmap, Scalar, Metric, and an incompatible 1-col Pie Chart
+    const createDashRes = await request.post(`${BACKEND_URL}/dashboards/`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+      data: { name: `All Widgets Audit ${timestamp}` },
+    });
+    expect(createDashRes.ok()).toBeTruthy();
+    const dash = await createDashRes.json();
+
+    const widgetsToCreate = [
+      {
+        title: "Service Pie Chart",
+        type: "SQL",
+        visualization: "pie_chart",
+        config: {
+          query:
+            "SELECT Clinical_Service, COUNT(*) AS cnt FROM synthetic_hospital_data WHERE Clinical_Service IS NOT NULL GROUP BY 1 LIMIT 4",
+        },
+      },
+      {
+        title: "Admissions Line Chart",
+        type: "SQL",
+        visualization: "line_chart",
+        config: {
+          query:
+            "SELECT Clinical_Service, COUNT(*) AS cnt FROM synthetic_hospital_data WHERE Clinical_Service IS NOT NULL GROUP BY 1 LIMIT 4",
+        },
+      },
+      {
+        title: "Incompatible 1-Col Pie",
+        type: "SQL",
+        visualization: "pie_chart",
+        config: {
+          query: "SELECT COUNT(*) AS total_rows FROM synthetic_hospital_data",
+        },
+      },
+    ];
+
+    for (const w of widgetsToCreate) {
+      const wRes = await request.post(
+        `${BACKEND_URL}/dashboards/${dash.id}/widgets`,
+        {
+          headers: { Authorization: `Bearer ${authToken}` },
+          data: w,
+        },
+      );
+      expect(wRes.ok()).toBeTruthy();
+    }
+
+    await page.addInitScript((token) => {
+      localStorage.setItem("pulse_auth_token", token);
+    }, authToken);
+    await page.goto(`/dashboard/${dash.id}`);
+
+    // 1. Assert "Unknown Viz" is never rendered on the dashboard
+    await expect(page.getByText("Service Pie Chart")).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(page.getByText("Unknown Viz")).toHaveCount(0);
+
+    // 2. Assert Pie Chart renders <viz-pie> SVG slices and legend items
+    const pieCard = page
+      .locator("app-widget")
+      .filter({ hasText: "Service Pie Chart" });
+    await expect(pieCard.locator("viz-pie svg path").first()).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(pieCard.locator("viz-pie .legend-item").first()).toBeVisible();
+
+    // 3. Assert Line Chart renders <viz-chart> in line mode with SVG polyline and points
+    const lineCard = page
+      .locator("app-widget")
+      .filter({ hasText: "Admissions Line Chart" });
+    await expect(lineCard.locator('[data-testid="viz-line-svg"]')).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(
+      lineCard.locator('[data-testid="viz-line-point"]').first(),
+    ).toBeVisible();
+
+    // 4. Assert incompatible 1-column Pie Chart renders the Visualization Incompatibility Banner and falls back to Table on click
+    const incompatCard = page
+      .locator("app-widget")
+      .filter({ hasText: "Incompatible 1-Col Pie" });
+    await expect(
+      incompatCard.locator('[data-testid="viz-incompatibility-state"]'),
+    ).toBeVisible({ timeout: 15000 });
+    await incompatCard.locator('[data-testid="btn-fallback-table"]').click();
+    await expect(incompatCard.locator("viz-table")).toBeVisible();
+  });
 });

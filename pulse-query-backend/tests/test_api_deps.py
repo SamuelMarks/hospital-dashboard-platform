@@ -12,6 +12,7 @@ from app.api.deps import (
   check_user_role_result,
   get_current_user,
   get_dashboard_with_access,
+  get_optional_current_user,
   require_role,
   resolve_user_from_token_result,
 )
@@ -23,11 +24,12 @@ from app.models.user import User
 
 @pytest.mark.asyncio
 async def test_get_current_user_missing_token(db_session: AsyncSession) -> None:
-  """Missing both header_token and query token should raise 401."""
+  """Missing both header_token and query token should raise 401 (or return None for optional user)."""
   with pytest.raises(HTTPException) as exc:
     await get_current_user(db=db_session, header_token=None, token=None)
 
   assert exc.value.status_code == 401
+  assert await get_optional_current_user(db=db_session, header_token=None, token=None) is None
 
 
 @pytest.mark.asyncio
@@ -96,6 +98,10 @@ async def test_get_current_user_active_success(db_session: AsyncSession) -> None
 
   resolved = await get_current_user(db=db_session, header_token=token)
   assert resolved.id == user.id
+
+  opt_resolved = await get_optional_current_user(db=db_session, header_token=token)
+  assert opt_resolved is not None
+  assert opt_resolved.id == user.id
 
 
 @pytest.mark.asyncio

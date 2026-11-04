@@ -303,6 +303,7 @@ def test_llm_client_helpers_and_configured_models(mock_swarm_settings: None) -> 
       visible_models=[],
       configured_models=[
         "groq:mixtral-8x7b|Mixtral 8x7B",
+        "anthropic:claude-3",
         "ollama:llama3.2",
         "openai/m1",  # duplicate of existing swarm entry
         "invalid_entry",
@@ -312,7 +313,7 @@ def test_llm_client_helpers_and_configured_models(mock_swarm_settings: None) -> 
     arena.reload_swarm(admin_cfg)
     models = arena.get_available_models(
       admin_settings=AdminSettingsResponse(
-        api_keys={},
+        api_keys={"cohere": "c-key"},
         visible_models=[],
         configured_models=["cohere:command-r", "groq:mixtral-8x7b", "bad"],
       ),
@@ -321,6 +322,17 @@ def test_llm_client_helpers_and_configured_models(mock_swarm_settings: None) -> 
     ids = [m.id for m in models]
     assert ids[0] == "SQL"
     assert "cohere:command-r" in ids
+
+    models_unconfigured = arena.get_available_models(
+      admin_settings=AdminSettingsResponse(
+        api_keys={},
+        visible_models=[],
+        configured_models=["cohere:command-r"],
+      ),
+      include_sql=True,
+      show_all=False,
+    )
+    assert "cohere:command-r" not in [m.id for m in models_unconfigured]
 
 
 @pytest.mark.asyncio
@@ -472,3 +484,132 @@ def test_stream_chunk_protocol_and_extract_chunk_delta() -> None:
 
   chunk_empty = _Chunk([])
   assert _extract_chunk_delta(chunk_empty) is None
+
+
+@pytest.mark.asyncio
+async def test_execute_provider_completion_lightweight_ollama_fallback(mock_swarm_settings: None) -> None:
+  """Verifies `_execute_provider_completion` retries once with the primary discovered lightweight Ollama model when local Ollama fails."""
+  _ = mock_swarm_settings
+  from app.core.result import Err, Ok
+  from app.schemas.ai import ModelInfo
+  from app.services.llm_client import SwarmCombatantDict
+
+  with patch("app.services.llm_client.AnyLLM.create", return_value=MagicMock()):
+    arena = LLMArenaClient()
+    mock_client = MagicMock()
+    fallback_chunk = MagicMock()
+    fallback_chunk.choices = [MagicMock(message=MagicMock(content="SELECT 1 AS fallback_ok"))]
+
+    # 1. First completion raises Connection error., fallback succeeds with gemma:2b
+    mock_client.completion.side_effect = [RuntimeError("Connection error."), fallback_chunk]
+    combatant: SwarmCombatantDict = {
+      "client": mock_client,
+      "name": "Gemma 4",
+      "id": "ollama:gemma4:latest",
+      "model_name": "gemma4:latest",
+      "provider": "ollama",
+      "is_local": True,
+    }
+    with patch.object(
+      arena,
+      "discover_ollama_models_result",
+      new=AsyncMock(
+        return_value=Ok(
+          [
+            ModelInfo(
+              id="ollama:gemma:2b",
+              name="Ollama: gemma:2b",
+              provider="ollama",
+              is_local=True,
+              processor_type="OLLAMA",
+            )
+          ]
+        )
+      ),
+    ):
+      res_ok = await arena._execute_provider_completion(
+        combatant,
+        [{"role": "user", "content": "SELECT 1"}],
+        temperature=0.0,
+        max_tokens=64,
+        stop=None,
+      )
+      assert res_ok.error is None
+      assert res_ok.content == "SELECT 1 AS fallback_ok"
+
+    # 2. When discovery fails or returns no different tag or fallback also raises, returns classified error
+    mock_client.completion.side_effect = RuntimeError("Connection error.")
+    with patch.object(
+      arena,
+      "discover_ollama_models_result",
+      new=AsyncMock(return_value=Err(MagicMock())),
+    ):
+      res_disc_err = await arena._execute_provider_completion(
+        combatant,
+        [{"role": "user", "content": "SELECT 1"}],
+        temperature=0.0,
+        max_tokens=64,
+        stop=None,
+      )
+      assert res_disc_err.error is not None
+      assert "Cannot connect to provider" in res_disc_err.error
+
+    same_tag_combatant: SwarmCombatantDict = {
+      "client": mock_client,
+      "name": "Gemma 2B",
+      "id": "ollama:gemma:2b",
+      "model_name": "gemma:2b",
+      "provider": "ollama",
+      "is_local": True,
+    }
+    with patch.object(
+      arena,
+      "discover_ollama_models_result",
+      new=AsyncMock(
+        return_value=Ok(
+          [
+            ModelInfo(
+              id="ollama:gemma:2b",
+              name="Ollama: gemma:2b",
+              provider="ollama",
+              is_local=True,
+              processor_type="OLLAMA",
+            )
+          ]
+        )
+      ),
+    ):
+      res_same = await arena._execute_provider_completion(
+        same_tag_combatant,
+        [{"role": "user", "content": "SELECT 1"}],
+        temperature=0.0,
+        max_tokens=64,
+        stop=None,
+      )
+      assert res_same.error is not None
+
+    with patch.object(
+      arena,
+      "discover_ollama_models_result",
+      new=AsyncMock(
+        return_value=Ok(
+          [
+            ModelInfo(
+              id="ollama:llama3.2:1b",
+              name="Ollama: llama3.2:1b",
+              provider="ollama",
+              is_local=True,
+              processor_type="OLLAMA",
+            )
+          ]
+        )
+      ),
+    ):
+      res_fb_fail = await arena._execute_provider_completion(
+        same_tag_combatant,
+        [{"role": "user", "content": "SELECT 1"}],
+        temperature=0.0,
+        max_tokens=64,
+        stop=None,
+      )
+      assert res_fb_fail.error is not None

@@ -8,6 +8,8 @@ to produce strongly-typed `AppError` domain errors with actionable remediation h
 
 from __future__ import annotations
 
+import re
+
 from app.core.result import AppError, ErrorCode
 
 _CRASH_INDICATORS: tuple[str, ...] = (
@@ -25,7 +27,20 @@ _CRASH_INDICATORS: tuple[str, ...] = (
 
 _CONNECTION_REFUSED_INDICATORS: tuple[str, ...] = (
   "connection refused",
+  "connection error",
+  "connect error",
   "connecterror",
+  "apiconnectionerror",
+  "apitimeouterror",
+  "readtimeout",
+  "writetimeout",
+  "pooltimeout",
+  "connecttimeout",
+  "remoteprotocolerror",
+  "server disconnected",
+  "connection reset",
+  "broken pipe",
+  "failed to connect to ollama",
   "all connection attempts failed",
   "failed to establish a new connection",
   "name or service not known",
@@ -34,6 +49,40 @@ _CONNECTION_REFUSED_INDICATORS: tuple[str, ...] = (
   "timed out",
   "timeout",
 )
+
+_PRECLASSIFIED_PREFIX_PATTERNS: tuple[re.Pattern[str], ...] = (
+  re.compile(r"^Error:\s+(?=\S)", re.IGNORECASE),
+  re.compile(r"^Provider\s+'[^']*'\s*(?:\([^)]*\)\s*)?error:\s+(?=\S)", re.IGNORECASE),
+  re.compile(r"^Cannot\s+connect\s+to\s+provider\s+'[^']*'\s+for\s+model\s+'[^']*':\s+(?=\S)", re.IGNORECASE),
+  re.compile(r"^Local\s+model\s+'[^']*'\s*(?:\([^)]*\)\s*)?process\s+crashed:\s+(?=\S)", re.IGNORECASE),
+  re.compile(r"^Authentication\s+failed\s+for\s+'[^']*'\s*(?:\([^)]*\))?:\s+(?=\S)", re.IGNORECASE),
+  re.compile(r"^Model\s+'[^']*'\s+was\s+not\s+found\s+on\s+provider\s+'[^']*':\s+(?=\S)", re.IGNORECASE),
+  re.compile(r"^Quota\s+or\s+rate\s+limit\s+exceeded\s+for\s+'[^']*'\s*(?:\([^)]*\))?:\s+(?=\S)", re.IGNORECASE),
+)
+
+
+def _unwrap_preclassified_error_text(raw_text: str) -> str:
+  """
+  Unwraps already-formatted `classify_llm_error` messages and strips trailing `| Remediation:` suffixes
+  so downstream callers never double-wrap provider error prefixes.
+
+  Args:
+      raw_text (str): Raw or previously classified error text.
+
+  Returns:
+      str: Inner unwrapped error message string.
+  """
+  cleaned = raw_text.split(" | Remediation:", 1)[0].strip()
+  changed = True
+  while changed and cleaned:
+    changed = False
+    for pattern in _PRECLASSIFIED_PREFIX_PATTERNS:
+      match = pattern.match(cleaned)
+      if match:
+        cleaned = cleaned[match.end() :].strip()
+        changed = True
+  return cleaned or raw_text
+
 
 _AUTH_ERROR_INDICATORS: tuple[str, ...] = (
   "401",
@@ -85,7 +134,10 @@ def classify_llm_error(
   Returns:
       AppError: Structured domain error with `ErrorCode`, human-readable message, and `remediation` details.
   """
-  raw_text = str(raw_error).strip() or (type(raw_error).__name__ if isinstance(raw_error, BaseException) else "Unknown")
+  initial_text = str(raw_error).strip() or (
+    type(raw_error).__name__ if isinstance(raw_error, BaseException) else "Unknown"
+  )
+  raw_text = _unwrap_preclassified_error_text(initial_text)
   lower_text = raw_text.lower()
   prov_clean = provider.strip() or "llm"
   model_clean = model.strip() or "unknown"

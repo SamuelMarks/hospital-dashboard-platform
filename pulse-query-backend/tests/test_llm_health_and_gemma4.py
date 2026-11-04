@@ -62,10 +62,25 @@ def test_classify_llm_error_all_branches() -> None:
   assert "LLM_LOCAL_PROCESS_CRASHED" in md_crash
   assert "**Remediation:**" in md_crash
 
-  # 2. Connection refused / timeout
+  # 2. Connection refused / timeout / Connection error. + double-wrap prevention
   err_conn = classify_llm_error("ollama", "qwen2.5", RuntimeError("All connection attempts failed"))
   assert err_conn.code == ErrorCode.LLM_CONNECTION_REFUSED
   assert err_conn.status_code == 503
+
+  err_conn_dot = classify_llm_error("ollama", "gemma4:latest", Exception("Connection error."))
+  assert err_conn_dot.code == ErrorCode.LLM_CONNECTION_REFUSED
+  assert err_conn_dot.status_code == 503
+
+  err_unwrapped = classify_llm_error(
+    "gemma4:latest (ollama)",
+    "ollama:gemma4:latest",
+    "Error: Provider 'gemma4:latest (ollama)' (ollama:gemma4:latest) error: Provider 'ollama' (gemma4:latest) error: Connection error. | Remediation: Restart Ollama",
+  )
+  assert err_unwrapped.code == ErrorCode.LLM_CONNECTION_REFUSED
+  assert "Provider 'gemma4:latest (ollama)'" not in err_unwrapped.message
+  assert err_unwrapped.message == (
+    "Cannot connect to provider 'gemma4:latest (ollama)' for model 'ollama:gemma4:latest': Connection error."
+  )
 
   # 3. Auth invalid (401/403)
   err_auth = classify_llm_error("gemini", "gemini-2.5-pro", "401 Unauthorized: API_KEY_INVALID")
@@ -127,9 +142,12 @@ def test_discovery_and_config_gemma4_sql_branches() -> None:
   )
 
   assert resolve_ollama_model_alias("ollama:hf.co/google/gemma-4-E4B") == "gemma:2b"
+  assert resolve_ollama_model_alias("ollama:gemma4:latest") == "gemma:2b"
+  assert resolve_ollama_model_alias("gemma:latest") == "gemma:2b"
   assert resolve_ollama_model_alias("hf.co/microsoft/Phi-4-mini-flash-reasoning") == "phi4-mini"
   assert resolve_ollama_model_alias("hf.co/meta-llama/Llama-3.2-1B") == "llama3.2:1b"
-  assert normalize_ollama_tag_key("ollama:gemma4:latest") == "gemma4"
+  assert normalize_ollama_tag_key("ollama:gemma4:latest") == "gemma:2b"
+  assert normalize_ollama_tag_key("ollama:llama3:latest") == "llama3"
   assert _parse_configured_model_entry("/mnt/data/ollama_models") is None
   assert _parse_configured_model_entry("ollama:/mnt/data/ollama_models") is None
   assert _parse_configured_model_entry("ollama:hf.co/google/gemma-4-E4B|Gemma 4 E4B") == (
@@ -144,26 +162,73 @@ def test_discovery_and_config_gemma4_sql_branches() -> None:
   assert _ollama_model_sort_key(light_model) < _ollama_model_sort_key(std_model) < _ollama_model_sort_key(heavy_model)
 
   assert _matches_visible_filter("ollama:gemma:2b", {"ollama:hf.co/google/gemma-4-E4B"}) is True
+  assert _matches_visible_filter("ollama:gemma:2b", {"gemma4:latest"}) is True
   assert _matches_visible_filter("ollama:phi4-mini", {"ollama:hf.co/google/gemma-4-E4B"}) is False
 
-  # When discovered_ollama is non-empty, unpulled choice models are filtered out and lightweight models sort before 27B
+  # When discovered_ollama is non-empty, unpulled choice models and unconfigured cloud models are filtered out when show_all=False
   models_with_choice = assemble_available_models(
     swarm_entries=[
       {"id": "/mnt/data/ollama_models", "name": "Invalid Path", "provider": "ollama", "is_local": True},
       {"id": "ollama:hf.co/google/gemma-4-E4B", "name": "Legacy Alias", "provider": "ollama", "is_local": True},
+      {"id": "ollama:unpulled-tag", "name": "Unpulled Tag", "provider": "ollama", "is_local": True},
+      {"id": "gemma4sql:google/gemma-4-sql-9b", "name": "Gemma SQL", "provider": "gemma4sql", "is_local": True},
       {"id": "openai:gpt-4o", "name": "GPT-4o", "provider": "openai", "is_local": False},
+      {"id": "gemini:gemini-2.5-flash", "name": "Gemini", "provider": "gemini", "is_local": False},
     ],
-    admin_settings=None,
+    admin_settings=AdminSettingsResponse(
+      api_keys={"google": "g-key"},
+      configured_models=["ollama:missing-extra", "anthropic:claude-3", "gemma4sql:google/gemma-4-sql-2b"],
+      gemma4_sql_enabled=False,
+    ),
     include_sql=True,
     discovered_ollama=[heavy_model, DEFAULT_CHOICE_OLLAMA_MODELS[0], std_model],
+    show_all=False,
   )
   ids = [m.id for m in models_with_choice]
   assert ids[0] == "SQL"
   assert ids[1] == "ollama:gemma:2b"
   assert "ollama:phi4-mini" not in ids
+  assert "ollama:unpulled-tag" not in ids
+  assert "ollama:missing-extra" not in ids
+  assert "openai:gpt-4o" not in ids
+  assert "anthropic:claude-3" not in ids
+  assert "gemma4sql:google/gemma-4-sql-9b" not in ids
+  assert "gemini:gemini-2.5-flash" in ids
   assert ids.index("ollama:gemma:2b") < ids.index("ollama:llama3:8b") < ids.index("ollama:gemma2:27b")
 
-  # When discovered_ollama is empty/None, all DEFAULT_CHOICE_OLLAMA_MODELS are included as default catalog
+  # When show_all=True, unpulled Ollama and unconfigured cloud/gemma4sql models are included with error/unconfigured status
+  models_show_all = assemble_available_models(
+    swarm_entries=[
+      {"id": "ollama:unpulled-tag", "name": "Unpulled Tag", "provider": "ollama", "is_local": True},
+      {"id": "gemma4sql:google/gemma-4-sql-9b", "name": "Gemma SQL", "provider": "gemma4sql", "is_local": True},
+      {"id": "openai:gpt-4o", "name": "GPT-4o", "provider": "openai", "is_local": False},
+    ],
+    admin_settings=AdminSettingsResponse(
+      api_keys={},
+      configured_models=["ollama:missing-extra", "anthropic:claude-3"],
+      gemma4_sql_enabled=False,
+    ),
+    include_sql=True,
+    discovered_ollama=[DEFAULT_CHOICE_OLLAMA_MODELS[0]],
+    show_all=True,
+  )
+  status_by_id = {m.id: m.status for m in models_show_all}
+  assert status_by_id["ollama:unpulled-tag"] == "error"
+  assert status_by_id["ollama:missing-extra"] == "error"
+  assert status_by_id["gemma4sql:google/gemma-4-sql-9b"] == "unconfigured"
+  assert status_by_id["openai:gpt-4o"] == "unconfigured"
+  assert status_by_id["anthropic:claude-3"] == "unconfigured"
+
+  # When visible_models in admin_settings contains only stale/uninstalled IDs, fallback to all live discovered models
+  models_stale_visible = assemble_available_models(
+    swarm_entries=[],
+    admin_settings=AdminSettingsResponse(visible_models=["ollama:deleted-model:70b"]),
+    include_sql=True,
+    discovered_ollama=[DEFAULT_CHOICE_OLLAMA_MODELS[0]],
+  )
+  assert "ollama:gemma:2b" in [m.id for m in models_stale_visible]
+
+  # When discovered_ollama is None, all DEFAULT_CHOICE_OLLAMA_MODELS are included as default catalog
   models_default_catalog = assemble_available_models(
     swarm_entries=[],
     admin_settings=None,

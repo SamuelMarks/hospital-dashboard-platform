@@ -1,7 +1,7 @@
 /**
  * @fileoverview Dashboard widget container component responsible for rendering the appropriate
- * visualization (table, chart, metric, pie, heatmap, scalar, markdown), skeleton loading states,
- * safe-mode error recovery, and widget toolbar actions.
+ * visualization (table, chart, metric, pie, heatmap, scalar, markdown), SQL-to-visualization
+ * compatibility validation, skeleton loading states, safe-mode error recovery, and widget toolbar actions.
  */
 import { Component, input, output, inject, computed, linkedSignal, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
@@ -35,6 +35,13 @@ import { VizPieComponent } from '../shared/visualizations/viz-pie/viz-pie.compon
 import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-heatmap.component';
 import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component';
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
+import {
+  CanonicalVisualizationType,
+  formatVizLabel,
+  NormalizedVisualizationType,
+  normalizeVisualizationType,
+  validateVisualizationCompatibility,
+} from '../shared/visualizations/viz-compatibility.utils';
 import { serializeTableToCsv, triggerBlobDownload } from '../shared/utils/csv-export.utils';
 import { hasActiveCdkOverlay } from '../core/accessibility/cdk-overlay-state.utils';
 import {
@@ -62,7 +69,8 @@ const DEFAULT_WIDGET: WidgetResponse = {
 };
 
 /**
- * Renders a single dashboard widget card with dynamic visualization switching and error recovery.
+ * Renders a single dashboard widget card with dynamic visualization switching,
+ * SQL-to-visualization compatibility validation, and error recovery.
  */
 @Component({
   selector: 'app-widget',
@@ -111,6 +119,8 @@ export class WidgetComponent {
 
   /** Widget configuration and metadata model passed from the parent dashboard grid. */
   readonly widgetInput = input<WidgetResponse>(DEFAULT_WIDGET, { alias: 'widget' });
+  /** Optional preview execution payload override used by the Widget Builder live preview step. */
+  readonly dataOverride = input<unknown>(undefined);
   /** Whether the widget host element currently holds DOM keyboard/pointer focus. */
   readonly isHostFocused = signal(false);
   /** Emits when the user clicks the edit action on the widget. */
@@ -120,11 +130,17 @@ export class WidgetComponent {
   /** Emits when the user requests to delete the widget. */
   readonly delete = output<void>();
 
+  /** Optional temporary visualization override selected from the incompatibility fallback banner. */
+  readonly fallbackVizOverride = linkedSignal<NormalizedVisualizationType | null>(() => {
+    this.widgetInput();
+    return null;
+  });
+
   /** Whether this specific widget is currently refreshing its data. */
   readonly isLoadingLocal = computed(() => this.store.isWidgetLoading()(this.widgetInput().id));
-  /** Raw execution result payload for this widget from the dashboard store. */
+  /** Raw execution result payload for this widget from `dataOverride` or the dashboard store. */
   readonly rawResult = computed(() =>
-    narrowRecordPayload(this.store.dataMap()[this.widgetInput().id]),
+    narrowRecordPayload(this.dataOverride() ?? this.store.dataMap()[this.widgetInput().id]),
   );
   /** Signal indicating whether the parent dashboard is in edit mode. */
   readonly isEditMode = this.store.isEditMode;
@@ -152,10 +168,13 @@ export class WidgetComponent {
       : false;
   });
 
-  /** Normalized lowercase visualization type identifier for template switching. */
-  readonly visualizationType = computed(() => {
-    if (this.widgetInput().type === 'TEXT') return 'markdown';
-    return (this.widgetInput().visualization || 'table').toLowerCase();
+  /** Normalized canonical visualization type identifier for template switching. */
+  readonly visualizationType = computed<NormalizedVisualizationType>(() => {
+    const override = this.fallbackVizOverride();
+    if (override) {
+      return override;
+    }
+    return normalizeVisualizationType(this.widgetInput().visualization, this.widgetInput().type);
   });
 
   /** Resolves the widget's subtitle or caption from top-level `subtitle` or `config` metadata. */
@@ -179,10 +198,10 @@ export class WidgetComponent {
   /** Skeleton loader variant matching the widget's visualization type. */
   readonly skeletonType = computed<SkeletonVariant>(() => {
     const viz = this.visualizationType();
-    if (viz.includes('chart') || viz.includes('graph')) return 'chart';
-    if (viz === 'pie') return 'pie';
+    if (viz === 'bar_chart' || viz === 'line_chart') return 'chart';
+    if (viz === 'pie_chart') return 'pie';
     if (viz === 'heatmap') return 'heatmap';
-    if (viz.includes('metric') || viz.includes('scalar')) return 'metric';
+    if (viz === 'metric' || viz === 'scalar') return 'metric';
     if (viz === 'table') return 'table';
     return 'card';
   });
@@ -197,6 +216,37 @@ export class WidgetComponent {
   readonly chartConfig = computed(() => parseChartConfig(this.widgetInput().config));
   /** Markdown content string extracted from the widget configuration. */
   readonly markdownContent = computed(() => extractMarkdownContent(this.widgetInput().config));
+
+  /**
+   * SQL-to-visualization compatibility evaluation for the active widget and dataset.
+   */
+  readonly compatibility = computed(() =>
+    validateVisualizationCompatibility(
+      this.visualizationType(),
+      this.typedDataAsTable(),
+      this.chartConfig(),
+      this.widgetInput().type,
+    ),
+  );
+
+  /**
+   * Switches the rendered visualization in-place to a compatible suggested representation.
+   *
+   * @param viz - Suggested canonical visualization type.
+   */
+  switchToSuggestedViz(viz: CanonicalVisualizationType): void {
+    this.fallbackVizOverride.set(viz);
+  }
+
+  /**
+   * Formats a suggested canonical visualization type into a localized button label.
+   *
+   * @param viz - Suggested canonical visualization type.
+   * @returns Localized display label.
+   */
+  formatSuggestedVizLabel(viz: CanonicalVisualizationType): string {
+    return formatVizLabel(viz);
+  }
 
   /** Strongly typed SQL configuration fields parsed from `widgetInput().config`. */
   readonly sqlConfig = computed(() => parseSqlWidgetConfig(this.widgetInput().config));

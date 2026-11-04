@@ -43,7 +43,7 @@ router = APIRouter()
 
 @router.get("/models", response_model=list[ModelInfo])
 async def list_available_models(
-  current_user: Annotated[User, Depends(deps.get_current_user)],
+  current_user: Annotated[User | None, Depends(deps.get_optional_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
   show_all: bool = False,
   include_sql: bool = False,
@@ -53,18 +53,26 @@ async def list_available_models(
   Returns the list of currently configured LLMs and processors available for the Arena or Widgets.
 
   Args:
-      current_user (User): Authenticated user session.
+      current_user (User | None): Optional authenticated user session.
       db (AsyncSession): Active database session.
-      show_all (bool): Whether to bypass admin model visibility filtering.
+      show_all (bool): Whether to bypass admin model visibility and availability filtering.
       include_sql (bool): Whether to include the `'SQL'` (`SQL [no model]`) processor option.
       discover_ollama (bool): Whether to dynamically query Ollama `/api/tags` for local models.
 
   Returns:
       list[ModelInfo]: List of configured LLM combatants and/or SQL processor.
   """
-  logger.debug(f"Listing available AI models for user={current_user.id}")
+  user_id = current_user.id if current_user is not None else "anonymous"
+  logger.debug(f"Listing available AI models for user={user_id}")
   admin_settings = await get_admin_settings(db) if not show_all else None
   if include_sql or discover_ollama:
+    if show_all:
+      return await llm_client.get_available_processors_async(
+        admin_settings=admin_settings,
+        include_sql=include_sql,
+        discover_ollama=discover_ollama,
+        show_all=True,
+      )
     return await llm_client.get_available_processors_async(
       admin_settings=admin_settings,
       include_sql=include_sql,

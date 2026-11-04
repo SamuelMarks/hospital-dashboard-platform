@@ -94,8 +94,10 @@ async def test_list_available_models_with_sql_and_ollama_discovery() -> None:
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as ac:
       response = await ac.get(f"{AI_MODELS_ENDPOINT}?include_sql=true&discover_ollama=true")
+      response_all = await ac.get(f"{AI_MODELS_ENDPOINT}?include_sql=true&discover_ollama=true&show_all=true")
 
   assert response.status_code == 200
+  assert response_all.status_code == 200
   data = response.json()
   assert len(data) == 2
   assert data[0]["id"] == "SQL"

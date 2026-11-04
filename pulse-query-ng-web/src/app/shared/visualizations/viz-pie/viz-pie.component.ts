@@ -2,8 +2,9 @@
  * @fileoverview Accessible Pie Chart Component.
  *
  * **Updates**:
- * - Integrated `ThemeService` for dynamic palette generation.
+ * - Integrated `ThemeService` for dynamic palette generation with safe default fallbacks.
  * - Uses Document CSS variables for consistent re-theming.
+ * - Supports numeric strings via `toFiniteNumber` and guards against zero-total or duplicate-label datasets.
  */
 
 import {
@@ -20,10 +21,10 @@ import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { TableDataSet } from '../viz-table/viz-table.component';
 import { ChartConfig } from '../viz-chart/viz-chart.component';
 import { ThemeService } from '../../../core/theme/theme.service';
-import { inferPieSliceKeys } from '../viz-axis-inference.utils';
+import { inferPieSliceKeys, toFiniteNumber } from '../viz-axis-inference.utils';
 
 /** Represents a calculated SVG arc segment for a single pie slice. */
-interface PieSlice {
+export interface PieSlice {
   /** SVG path command (`d` attribute) describing the slice wedge. */
   path: string;
   /** Resolved hexadecimal or CSS color string for the slice fill. */
@@ -147,7 +148,6 @@ export class VizPieComponent {
    * Registers a reactive effect to synchronize slice colors with the active Material 3 theme.
    */
   constructor() {
-    // Listen to theme resets
     effect(() => {
       this.themeService.seedColor();
       this.themeService.isDark();
@@ -158,15 +158,15 @@ export class VizPieComponent {
   }
 
   /**
-   * Reads `--chart-color-*` CSS custom properties from the document root and updates `palette`.
+   * Reads `--chart-color-*` CSS custom properties from the document root and updates `palette`
+   * with safe fallback colors when custom properties are unset.
    */
   updatePaletteFomDom(): void {
     const style = getComputedStyle(this.document.documentElement);
-    const p1 = style.getPropertyValue('--chart-color-1').trim();
-    const p2 = style.getPropertyValue('--chart-color-2').trim();
-    const p3 = style.getPropertyValue('--chart-color-3').trim();
+    const p1 = style.getPropertyValue('--chart-color-1').trim() || '#1976d2';
+    const p2 = style.getPropertyValue('--chart-color-2').trim() || '#00796b';
+    const p3 = style.getPropertyValue('--chart-color-3').trim() || '#fbc02d';
 
-    // Provide a gradient of shades if not all distinct
     this.palette.set([p1, p2, p3, '#ffb74d', '#ffa726', '#f57c00', '#d32f2f', '#c2185b']);
   }
 
@@ -186,7 +186,7 @@ export class VizPieComponent {
     return $localize`Pie chart with ${s.length} slices. Use tab to navigate legend items for details.`;
   });
 
-  /** Slices. */
+  /** Computed SVG pie slices derived from `dataSet`, `config`, and `palette`. */
   readonly slices: Signal<PieSlice[]> = computed(() => {
     const ds = this.dataSet();
     const colors = this.palette();
@@ -194,18 +194,24 @@ export class VizPieComponent {
     const firstRow = ds?.data?.[0];
     if (!ds || !firstRow || !ds.columns.length) return [];
 
-    // Determine Mapping
     const conf = this.config();
     const availableCols = ds.columns;
     const { labelKey, valueKey } = inferPieSliceKeys(availableCols, firstRow, conf);
 
-    const total = ds.data.reduce((acc, r) => acc + Math.max(0, Number(r[valueKey]) || 0), 0);
+    const total = ds.data.reduce(
+      (acc, r) => acc + Math.max(0, toFiniteNumber(r[valueKey]) ?? 0),
+      0,
+    );
+    if (total <= 0) {
+      return [];
+    }
+
     let cumPercent = 0;
 
     return ds.data.map((row, i): PieSlice => {
-      const rawVal = Number(row[valueKey]) || 0;
+      const rawVal = toFiniteNumber(row[valueKey]) ?? 0;
       const val = Math.max(0, rawVal);
-      const percent = total > 0 ? val / total : 0;
+      const percent = val / total;
 
       const start = cumPercent;
       cumPercent += percent;
@@ -219,7 +225,7 @@ export class VizPieComponent {
 
       const pathCmd =
         percent >= 0.999
-          ? `M 1 0 A 1 1 0 1 1 -1 0 A 1 1 0 1 1 1 0`
+          ? `M 0 0 L 1 0 A 1 1 0 1 1 -1 0 A 1 1 0 1 1 1 0 Z`
           : `M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArc} 1 ${endX} ${endY} Z`;
 
       return {

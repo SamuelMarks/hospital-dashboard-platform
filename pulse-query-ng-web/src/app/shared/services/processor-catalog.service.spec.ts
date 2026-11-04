@@ -58,15 +58,31 @@ describe('ProcessorCatalogService', () => {
     expect(anyLlmOpt.category).toBe('ANY_LLM');
   });
 
-  it('should load processors and group into SQL, Ollama, and any-llm', () => {
+  it('should load processors, filter out non-connected models, and group into SQL, Ollama, and any-llm', () => {
     const models: ModelInfo[] = [
-      { id: 'SQL', name: 'SQL [no model]', provider: 'sql', is_local: true, processor_type: 'SQL' },
+      {
+        id: 'SQL',
+        name: 'SQL [no model]',
+        provider: 'sql',
+        is_local: true,
+        processor_type: 'SQL',
+        status: 'connected',
+      },
       {
         id: 'ollama:llama3',
         name: 'Llama 3',
         provider: 'ollama',
         is_local: true,
         processor_type: 'OLLAMA',
+        status: 'connected',
+      },
+      {
+        id: 'ollama:gemma4:latest',
+        name: 'Missing Gemma 4',
+        provider: 'ollama',
+        is_local: true,
+        processor_type: 'OLLAMA',
+        status: 'error',
       },
       {
         id: 'openai:gpt-4o',
@@ -74,6 +90,14 @@ describe('ProcessorCatalogService', () => {
         provider: 'openai',
         is_local: false,
         processor_type: 'ANY_LLM',
+      },
+      {
+        id: 'anthropic:claude-3',
+        name: 'Claude 3',
+        provider: 'anthropic',
+        is_local: false,
+        processor_type: 'ANY_LLM',
+        status: 'unconfigured',
       },
     ];
     aiServiceMock.listAvailableModelsApiV1AiModelsGet.mockReturnValue(of(models));
@@ -83,7 +107,9 @@ describe('ProcessorCatalogService', () => {
     expect(service.processors().length).toBe(3);
     expect(service.sqlProcessors().length).toBe(1);
     expect(service.ollamaProcessors().length).toBe(1);
+    expect(service.ollamaProcessors()[0]?.id).toBe('ollama:llama3');
     expect(service.anyLlmProcessors().length).toBe(1);
+    expect(service.anyLlmProcessors()[0]?.id).toBe('openai:gpt-4o');
   });
 
   it('should prepend SQL [no model] when backend omits it or fails', () => {

@@ -68,5 +68,18 @@ describe('viz-axis-inference.utils', () => {
       labelKey: 'only_col',
       valueKey: 'only_col',
     });
+
+    // Numeric string support
+    expect(inferChartAxisKeys(['metric_str', 'unit'], { metric_str: '42.5', unit: 'ICU' })).toEqual(
+      {
+        x: 'unit',
+        y: 'metric_str',
+        stack: '',
+      },
+    );
+    expect(inferPieSliceKeys(['unit', 'cnt_str'], { unit: 'ICU', cnt_str: '19' })).toEqual({
+      labelKey: 'unit',
+      valueKey: 'cnt_str',
+    });
   });
 });

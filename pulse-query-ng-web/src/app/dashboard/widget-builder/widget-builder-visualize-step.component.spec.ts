@@ -17,6 +17,8 @@ import { WidgetResponse } from '../../api-client';
 class MockWidgetComponent {
   /** Widget input binding. */
   readonly widget = input<WidgetResponse | null>(null);
+  /** Preview data override binding. */
+  readonly dataOverride = input<unknown>(undefined);
 }
 
 describe('WidgetBuilderVisualizeStepComponent', () => {
@@ -120,5 +122,38 @@ describe('WidgetBuilderVisualizeStepComponent', () => {
     placeholderInput.value = 'Ask here...';
     placeholderInput.dispatchEvent(new Event('input'));
     expect(component.placeholderText()).toBe('Ask here...');
+
+    // Test vizCompatibility error and suggested visualization button
+    fixture.componentRef.setInput('vizCompatibility', {
+      compatible: false,
+      normalizedViz: 'pie_chart',
+      code: 'INCOMPATIBLE_TOO_FEW_COLUMNS',
+      reason: 'Pie Chart requires at least 2 columns.',
+      suggestedVisualizations: ['metric', 'table'],
+      warnings: [],
+    });
+    fixture.detectChanges();
+    const errEl = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="builder-viz-validation-error"]',
+    );
+    expect(errEl?.textContent).toContain('Pie Chart requires at least 2 columns.');
+    const suggestBtn = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="builder-btn-suggest-viz-metric"]',
+    ) as HTMLButtonElement;
+    suggestBtn.click();
+    expect(vizSpy).toHaveBeenCalledWith('metric');
+
+    // Test vizCompatibility warning banner
+    fixture.componentRef.setInput('vizCompatibility', {
+      compatible: true,
+      normalizedViz: 'pie_chart',
+      suggestedVisualizations: ['pie_chart'],
+      warnings: [{ code: 'WARNING_HIGH_CARDINALITY_PIE', message: 'High slice count warning' }],
+    });
+    fixture.detectChanges();
+    const warnEl = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="builder-viz-validation-warning"]',
+    );
+    expect(warnEl?.textContent).toContain('High slice count warning');
   });
 });

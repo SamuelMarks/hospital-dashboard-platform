@@ -131,5 +131,23 @@ describe('VizHeatmapComponent', () => {
     fixture.componentRef.setInput('dataSet', multiColData);
     fixture.detectChanges();
     expect(component.matrix()?.max).toBe(42);
+
+    // Fewer than 3 columns returns null matrix
+    fixture.componentRef.setInput('dataSet', {
+      columns: ['svc', 'hr'],
+      data: [{ svc: 'Cardiology', hr: 6 }],
+    });
+    fixture.detectChanges();
+    expect(component.matrix()).toBeNull();
+
+    // Custom config xKey and yKey overrides + non-numeric fallback to 0
+    fixture.componentRef.setInput('dataSet', {
+      columns: ['svc', 'bucket', 'custom_val'],
+      data: [{ svc: 'ICU', bucket: 12, custom_val: 'not-a-num' }],
+    });
+    fixture.componentRef.setInput('config', { xKey: 'bucket', yKey: 'custom_val' });
+    fixture.detectChanges();
+    expect(component.matrix()?.xHeaders).toEqual(['12']);
+    expect(component.matrix()?.max).toBe(0);
   });
 });

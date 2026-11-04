@@ -382,4 +382,13 @@
     <string name="chat_model_status_fmt">%1$s (%2$s)</string>
     <string name="chat_sql_preview_rows_fmt">Résultat DuckDB (%1$d lignes)</string>
     <string name="chat_sql_preview_error_fmt">Erreur DuckDB : %1$s</string>
+    <string name="a11y_pie_chart_summary">Graphique circulaire avec %1$d secteurs : %2$s</string>
+    <string name="a11y_bar_chart_summary">Graphique à barres avec %1$d éléments : %2$s</string>
+    <string name="a11y_line_chart_summary">Graphique linéaire avec %1$d éléments : %2$s</string>
+    <string name="a11y_heatmap_summary">Matrice de carte thermique avec %1$d lignes et %2$d colonnes.</string>
+    <string name="a11y_table_view_summary">Vue tableau avec %1$d éléments : %2$s</string>
+    <string name="table_header_metric_label">Indicateur / Libellé</string>
+    <string name="table_header_value">Valeur</string>
+    <string name="heatmap_insufficient_dimensions">Dimensions de matrice insuffisantes pour la carte thermique (nécessite au moins 3 colonnes).</string>
+    <string name="viz_incompat_banner_title">Visualisation non applicable au résultat SQL</string>
     </resources>

@@ -259,36 +259,77 @@
     <!-- Visualization Render -->
     @else {
       <div class="viz-container" *appErrorBoundary="safeModeTpl">
-        @switch (visualizationType()) {
-          @case ('table') {
-            <viz-table [dataSet]="typedDataAsTable()" [config]="widgetInput().config"></viz-table>
-          }
-          <!-- Fix: Removed titleOverride to allow metric viz to display actual data column name (e.g. 'Value') instead of repeating widget title -->
-          @case ('metric') {
-            <viz-metric [data]="typedDataAsMetric()" [config]="widgetInput().config"></viz-metric>
-          }
-          @case ('scalar') {
-            <viz-scalar [data]="typedDataAsScalar()"></viz-scalar>
-          }
-          @case ('bar_chart') {
-            <viz-chart [dataSet]="typedDataAsTable()" [config]="chartConfig()"></viz-chart>
-          }
-          @case ('line_graph') {
-            <viz-chart [dataSet]="typedDataAsTable()" [config]="chartConfig()"></viz-chart>
-          }
-          @case ('pie') {
-            <viz-pie [dataSet]="typedDataAsTable()"></viz-pie>
-          }
-          @case ('heatmap') {
-            <viz-heatmap [dataSet]="typedDataAsTable()"></viz-heatmap>
-          }
-          @case ('markdown') {
-            <viz-markdown [content]="markdownContent()"></viz-markdown>
-          }
-          @default {
-            <div i18n class="center-overlay" style="color: var(--sys-text-secondary)">
-              Unknown Viz
+        @if (visualizationType() === 'unknown') {
+          <div i18n class="center-overlay" style="color: var(--sys-text-secondary)">
+            Unknown Viz
+          </div>
+        } @else if (!compatibility().compatible) {
+          <div
+            class="center-overlay p-4"
+            role="alert"
+            data-testid="viz-incompatibility-state"
+            style="color: var(--sys-text-primary)"
+          >
+            <mat-icon aria-hidden="true" class="text-3xl mb-2" style="color: var(--sys-error)"
+              >insights</mat-icon
+            >
+            <strong i18n class="text-sm font-semibold mb-1">
+              Visualization Not Applicable to SQL Result
+            </strong>
+            <span class="text-xs text-center mb-3" style="color: var(--sys-text-secondary)">
+              {{ compatibility().reason }}
+            </span>
+            <div class="flex gap-2 items-center flex-wrap justify-center">
+              @for (suggested of compatibility().suggestedVisualizations; track suggested) {
+                <button
+                  type="button"
+                  mat-stroked-button
+                  (click)="switchToSuggestedViz(suggested)"
+                  [attr.data-testid]="
+                    suggested === 'table'
+                      ? 'btn-fallback-table'
+                      : 'btn-switch-compatible-viz-' + suggested
+                  "
+                >
+                  {{ formatSuggestedVizLabel(suggested) }}
+                </button>
+              }
             </div>
+          </div>
+        } @else {
+          @switch (visualizationType()) {
+            @case ('table') {
+              <viz-table [dataSet]="typedDataAsTable()" [config]="widgetInput().config"></viz-table>
+            }
+            @case ('metric') {
+              <viz-metric [data]="typedDataAsMetric()" [config]="widgetInput().config"></viz-metric>
+            }
+            @case ('scalar') {
+              <viz-scalar [data]="typedDataAsScalar()"></viz-scalar>
+            }
+            @case ('bar_chart') {
+              <viz-chart
+                [dataSet]="typedDataAsTable()"
+                [config]="chartConfig()"
+                [mode]="'bar'"
+              ></viz-chart>
+            }
+            @case ('line_chart') {
+              <viz-chart
+                [dataSet]="typedDataAsTable()"
+                [config]="chartConfig()"
+                [mode]="'line'"
+              ></viz-chart>
+            }
+            @case ('pie_chart') {
+              <viz-pie [dataSet]="typedDataAsTable()" [config]="chartConfig()"></viz-pie>
+            }
+            @case ('heatmap') {
+              <viz-heatmap [dataSet]="typedDataAsTable()" [config]="chartConfig()"></viz-heatmap>
+            }
+            @case ('markdown') {
+              <viz-markdown [content]="markdownContent()"></viz-markdown>
+            }
           }
         }
       </div>

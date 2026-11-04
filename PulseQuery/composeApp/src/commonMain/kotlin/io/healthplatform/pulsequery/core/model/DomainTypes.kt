@@ -294,6 +294,10 @@ enum class VisualizationType(val wireValue: String) {
     @SerialName("metric")
     METRIC("metric"),
 
+    /** Single scalar / correlation gauge visualization. */
+    @SerialName("scalar")
+    SCALAR("scalar"),
+
     /** Formatted text / markdown note visualization. */
     @SerialName("markdown")
     MARKDOWN("markdown");
@@ -303,13 +307,23 @@ enum class VisualizationType(val wireValue: String) {
      */
     companion object {
         /**
-         * Resolves a [VisualizationType] from [raw], defaulting to [TABLE].
+         * Resolves a [VisualizationType] from [raw] across all canonical and legacy aliases, defaulting to [TABLE].
          *
          * @param raw Raw wire string.
          * @return Matching [VisualizationType].
          */
         fun fromWire(raw: String): VisualizationType =
-            entries.firstOrNull { it.wireValue.equals(raw, ignoreCase = true) } ?: TABLE
+            when (raw.trim().lowercase()) {
+                "table", "grid" -> TABLE
+                "bar", "barchart", "bar_chart" -> BAR_CHART
+                "line", "linechart", "line_chart", "line_graph" -> LINE_CHART
+                "pie", "pie_chart", "donut" -> PIE_CHART
+                "heatmap", "matrix" -> HEATMAP
+                "metric", "kpi" -> METRIC
+                "scalar", "gauge" -> SCALAR
+                "markdown", "text", "note" -> MARKDOWN
+                else -> TABLE
+            }
     }
 }
 

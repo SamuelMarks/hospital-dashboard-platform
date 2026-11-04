@@ -79,6 +79,8 @@ class MockVizChartComponent {
   readonly dataSet = input<unknown>();
   /** Config input. */
   readonly config = input<unknown>();
+  /** Mode input. */
+  readonly mode = input<'bar' | 'line'>('bar');
 }
 /** Mock pie visualization component. */
 @Component({
@@ -88,6 +90,8 @@ class MockVizChartComponent {
 class MockVizPieComponent {
   /** Dataset input. */
   readonly dataSet = input<unknown>();
+  /** Config input. */
+  readonly config = input<unknown>();
 }
 /** Mock heatmap visualization component. */
 @Component({
@@ -97,6 +101,8 @@ class MockVizPieComponent {
 class MockVizHeatmapComponent {
   /** Dataset input. */
   readonly dataSet = input<unknown>();
+  /** Config input. */
+  readonly config = input<unknown>();
 }
 /** Mock scalar visualization component. */
 @Component({
@@ -692,5 +698,53 @@ describe('WidgetComponent', () => {
       config: { description: '  Description fallback  ' },
     });
     expect(component.widgetSubtitle()).toBe('Description fallback');
+
+    // Test pie_chart, line_chart, heatmap, scalar, metric, dataOverride, and incompatibility fallback
+    fixture.componentRef.setInput('dataOverride', {
+      columns: ['service', 'cnt'],
+      data: [
+        { service: 'ICU', cnt: 10 },
+        { service: 'ER', cnt: 20 },
+      ],
+    });
+    fixture.componentRef.setInput('widget', {
+      ...mockWidget,
+      visualization: 'pie_chart',
+    });
+    fixture.detectChanges();
+    expect(component.visualizationType()).toBe('pie_chart');
+    expect(fixture.debugElement.query(By.directive(MockVizPieComponent))).toBeTruthy();
+
+    fixture.componentRef.setInput('widget', {
+      ...mockWidget,
+      visualization: 'line_chart',
+    });
+    fixture.detectChanges();
+    expect(component.visualizationType()).toBe('line_chart');
+    expect(fixture.debugElement.query(By.directive(MockVizChartComponent))).toBeTruthy();
+
+    // Test incompatibility state and switchToSuggestedViz fallback
+    fixture.componentRef.setInput('dataOverride', {
+      columns: ['only_one_col'],
+      data: [{ only_one_col: 42 }],
+    });
+    fixture.componentRef.setInput('widget', {
+      ...mockWidget,
+      visualization: 'pie_chart',
+    });
+    fixture.detectChanges();
+    expect(component.compatibility().compatible).toBe(false);
+    const incompEl = fixture.debugElement.query(
+      By.css('[data-testid="viz-incompatibility-state"]'),
+    );
+    expect(incompEl).toBeTruthy();
+
+    expect(component.formatSuggestedVizLabel('table')).toBe('Table');
+    const fallbackBtn = fixture.debugElement.query(By.css('[data-testid="btn-fallback-table"]'));
+    expect(fallbackBtn).toBeTruthy();
+    fallbackBtn.triggerEventHandler('click', null);
+    fixture.detectChanges();
+    expect(component.visualizationType()).toBe('table');
+    expect(fixture.debugElement.query(By.directive(MockVizTableComponent))).toBeTruthy();
   });
 });

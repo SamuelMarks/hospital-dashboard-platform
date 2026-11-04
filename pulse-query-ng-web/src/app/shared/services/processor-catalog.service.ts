@@ -124,7 +124,8 @@ export class ProcessorCatalogService {
       })
       .pipe(catchError(() => of<ModelInfo[]>([])))
       .subscribe((models) => {
-        const mapped = (models ?? []).map(mapModelInfoToProcessorOption);
+        const connectedModels = (models ?? []).filter((m) => !m.status || m.status === 'connected');
+        const mapped = connectedModels.map(mapModelInfoToProcessorOption);
         const hasSql = mapped.some((opt) => opt.id === 'SQL');
         this.optionsSignal.set(hasSql ? mapped : [SQL_NO_MODEL_OPTION, ...mapped]);
       });

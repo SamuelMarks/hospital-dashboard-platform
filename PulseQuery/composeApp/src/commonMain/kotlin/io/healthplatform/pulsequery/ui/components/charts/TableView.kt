@@ -26,7 +26,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.a11y_table_view_summary
 import pulsequery.composeapp.generated.resources.no_table_rows_available
+import pulsequery.composeapp.generated.resources.table_header_metric_label
+import pulsequery.composeapp.generated.resources.table_header_value
 import kotlin.math.roundToInt
 
 /**
@@ -55,8 +58,8 @@ fun TableView(
     data: List<Pair<String, Float>>,
     modifier: Modifier = Modifier
 ) {
-    val tableDescription = "Table view with ${data.size} items: " +
-        data.joinToString(separator = ", ") { "${it.first}: ${it.second}" }
+    val itemsSummary = data.joinToString(separator = ", ") { "${it.first}: ${it.second}" }
+    val tableDescription = stringResource(Res.string.a11y_table_view_summary, data.size, itemsSummary)
 
     Column(
         modifier = modifier
@@ -72,13 +75,13 @@ fun TableView(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Metric / Label",
+                text = stringResource(Res.string.table_header_metric_label),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "Value",
+                text = stringResource(Res.string.table_header_value),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary

@@ -29,6 +29,8 @@ from app.services.llm.discovery import (
   assemble_available_models,
   build_gemma4_sql_model_info,
   discover_ollama_models_result as _discover_ollama_models_result,
+  normalize_ollama_tag_key,
+  resolve_ollama_model_alias,
 )
 from app.services.llm.error_classifier import classify_llm_error
 from app.services.llm.fallback_mock import (
@@ -203,6 +205,29 @@ _DONE_SENTINEL = _StreamDoneSentinel()
 type StreamQueueItem = str | Exception | _StreamDoneSentinel
 
 
+def _extract_completion_content(response: StreamableCompletionResult) -> str:
+  """
+  Extracts trimmed text content from a non-streaming completion response.
+
+  Args:
+      response (StreamableCompletionResult): Completion response object from provider.
+
+  Returns:
+      str: Trimmed completion message content.
+
+  Raises:
+      AttributeError: If the response or its first choice does not conform to
+          `CompletionChunkProtocol` / `CompletionMessageChoiceProtocol` or has `None` content.
+      IndexError: If `response.choices` is empty.
+  """
+  if not isinstance(response, CompletionChunkProtocol):
+    raise AttributeError("Response does not implement CompletionChunkProtocol")
+  first_choice = response.choices[0]
+  if not isinstance(first_choice, CompletionMessageChoiceProtocol) or first_choice.message.content is None:
+    raise AttributeError("Choice does not contain message content")
+  return first_choice.message.content.strip()
+
+
 def _extract_chunk_delta(chunk: CompletionChunkProtocol) -> str | None:
   """
   Extracts text delta from a streaming completion chunk.
@@ -270,51 +295,55 @@ class LLMArenaClient:
     cap = max_local_concurrent if max_local_concurrent is not None else max(1, settings.OLLAMA_MAX_CONCURRENT_REQUESTS)
     self._local_semaphore = asyncio.Semaphore(cap)
     self.swarm: list[SwarmCombatantDict] = []
+    self._unconfigured_cloud_ids: set[str] = set()
     self.init_swarm()
 
-  def init_swarm(
+  def _build_raw_swarm_configs(
     self,
-    custom_api_keys: dict[str, str] | None = None,
-    configured_models: list[str] | None = None,
-    ollama_api_base: str | None = None,
-    gemma4_sql_enabled: bool | None = None,
-    gemma4_sql_backend: str | None = None,
-    gemma4_sql_model_name: str | None = None,
-    gemma4_sql_api_base: str | None = None,
-  ) -> None:
+    keys: dict[str, str],
+    configured_models: list[str] | None,
+    ollama_api_base: str | None,
+    gemma4_sql_enabled: bool | None,
+    gemma4_sql_backend: str | None,
+    gemma4_sql_model_name: str | None,
+    gemma4_sql_api_base: str | None,
+  ) -> list[dict[str, JsonPrimitive]]:
     """
-    Initializes or reloads the Swarm based on settings, updated API keys, `gemma-4-sql`, and configured `any-llm` models.
+    Builds the normalized list of raw swarm configuration dictionaries from `settings.LLM_SWARM` and overrides.
 
     Args:
-        custom_api_keys (dict[str, str] | None): Updated API keys to apply.
-        configured_models (list[str] | None): Additional `provider:model` or `provider/model` entries.
+        keys (dict[str, str]): Custom API keys mapping.
+        configured_models (list[str] | None): Additional `provider:model` entries.
         ollama_api_base (str | None): Optional custom Ollama base URL.
         gemma4_sql_enabled (bool | None): Optional explicit enable flag for `gemma-4-sql`.
         gemma4_sql_backend (str | None): Optional `gemma-4-sql` backend engine override.
         gemma4_sql_model_name (str | None): Optional `gemma-4-sql` model identifier override.
         gemma4_sql_api_base (str | None): Optional `gemma-4-sql serve` HTTP URL override.
-    """
-    self.swarm = []
-    keys = custom_api_keys or {}
-    seen_ids: set[str] = set()
 
-    raw_configs: list[dict[str, JsonPrimitive]] = [
-      {
-        "provider": c.get("provider"),
-        "model": c.get("model"),
-        "api_key": c.get("api_key"),
-        "api_base": str(c.get("api_base") or c.get("base_url") or "") or None,
-        "name": c.get("name"),
-        "model_name": str(c.get("model_name") or c.get("model") or ""),
-        "is_local": bool(c.get("is_local", c.get("local", False))),
-      }
-      for c in settings.LLM_SWARM
-    ]
+    Returns:
+        list[dict[str, JsonPrimitive]]: Normalized configuration dictionaries.
+    """
+    raw_configs: list[dict[str, JsonPrimitive]] = []
+    for c in settings.LLM_SWARM:
+      is_ollama_cfg = c.get("api_key") == "ollama" or str(c.get("provider") or "").lower() == "ollama"
+      raw_mod = str(c.get("model_name") or c.get("model") or "")
+      norm_mod = resolve_ollama_model_alias(raw_mod) if is_ollama_cfg else str(c.get("model") or "")
+      norm_mod_name = resolve_ollama_model_alias(raw_mod) if is_ollama_cfg else raw_mod
+      raw_configs.append(
+        {
+          "provider": c.get("provider"),
+          "model": norm_mod,
+          "api_key": c.get("api_key"),
+          "api_base": str(c.get("api_base") or c.get("base_url") or "") or None,
+          "name": c.get("name"),
+          "model_name": norm_mod_name,
+          "is_local": bool(c.get("is_local", c.get("local", False))),
+        }
+      )
 
     if gemma4_sql_enabled is True:
       g_backend = gemma4_sql_backend or settings.GEMMA4_SQL_BACKEND
       g_model = gemma4_sql_model_name or settings.GEMMA4_SQL_MODEL_NAME
-      g_base = gemma4_sql_api_base or settings.GEMMA4_SQL_API_BASE
       raw_configs.append(
         {
           "provider": "gemma4sql",
@@ -323,7 +352,7 @@ class LLMArenaClient:
           "model_name": g_model,
           "name": f"Gemma-4-SQL ({g_backend.upper()})",
           "api_key": g_backend,
-          "api_base": g_base,
+          "api_base": gemma4_sql_api_base or settings.GEMMA4_SQL_API_BASE,
           "is_local": True,
         }
       )
@@ -350,6 +379,43 @@ class LLMArenaClient:
             "is_local": is_ollama or is_gemma4,
           }
         )
+    return raw_configs
+
+  def init_swarm(
+    self,
+    custom_api_keys: dict[str, str] | None = None,
+    configured_models: list[str] | None = None,
+    ollama_api_base: str | None = None,
+    gemma4_sql_enabled: bool | None = None,
+    gemma4_sql_backend: str | None = None,
+    gemma4_sql_model_name: str | None = None,
+    gemma4_sql_api_base: str | None = None,
+  ) -> None:
+    """
+    Initializes or reloads the Swarm based on settings, updated API keys, `gemma-4-sql`, and configured `any-llm` models.
+
+    Args:
+        custom_api_keys (dict[str, str] | None): Updated API keys to apply.
+        configured_models (list[str] | None): Additional `provider:model` or `provider/model` entries.
+        ollama_api_base (str | None): Optional custom Ollama base URL.
+        gemma4_sql_enabled (bool | None): Optional explicit enable flag for `gemma-4-sql`.
+        gemma4_sql_backend (str | None): Optional `gemma-4-sql` backend engine override.
+        gemma4_sql_model_name (str | None): Optional `gemma-4-sql` model identifier override.
+        gemma4_sql_api_base (str | None): Optional `gemma-4-sql serve` HTTP URL override.
+    """
+    self.swarm = []
+    self._unconfigured_cloud_ids = set()
+    keys = custom_api_keys or {}
+    seen_ids: set[str] = set()
+    raw_configs = self._build_raw_swarm_configs(
+      keys=keys,
+      configured_models=configured_models,
+      ollama_api_base=ollama_api_base,
+      gemma4_sql_enabled=gemma4_sql_enabled,
+      gemma4_sql_backend=gemma4_sql_backend,
+      gemma4_sql_model_name=gemma4_sql_model_name,
+      gemma4_sql_api_base=gemma4_sql_api_base,
+    )
 
     for config in raw_configs:
       try:
@@ -365,6 +431,7 @@ class LLMArenaClient:
           or keys.get(f"{logical_provider.upper()}_API_KEY")
           or cfg_api_key
         )
+        is_local = bool(config.get("is_local", config.get("local", False)))
 
         client: LLMProviderClientProtocol | AnyLLM | Gemma4SqlProvider
         if logical_provider == "gemma4sql" or provider == "gemma4sql":
@@ -390,6 +457,13 @@ class LLMArenaClient:
           continue
         seen_ids.add(combatant_id)
 
+        if (
+          not is_local
+          and logical_provider not in {"ollama", "gemma4sql", "llamacpp", "sql", "mock"}
+          and not (api_key or settings.get_provider_api_key(logical_provider))
+        ):
+          self._unconfigured_cloud_ids.add(combatant_id)
+
         self.swarm.append(
           {
             "client": client,
@@ -397,7 +471,7 @@ class LLMArenaClient:
             "id": combatant_id,
             "model_name": str(config.get("model_name", config.get("model"))),
             "provider": logical_provider,
-            "is_local": bool(config.get("is_local", config.get("local", False))),
+            "is_local": is_local,
           }
         )
         logger.info(f"Registered Arena Combatant: {config['name']} ({config['model']})")
@@ -489,6 +563,7 @@ class LLMArenaClient:
     admin_settings: AdminSettingsResponse | None = None,
     include_sql: bool = False,
     discovered_ollama: list[ModelInfo] | None = None,
+    show_all: bool = False,
   ) -> list[ModelInfo]:
     """
     Returns a list of configured models (and optionally `SQL [no model]` + discovered Ollama models).
@@ -497,6 +572,7 @@ class LLMArenaClient:
         admin_settings (AdminSettingsResponse | None): Optional admin configuration to filter models by visibility.
         include_sql (bool): Whether to prepend the `SQL [no model]` processor option.
         discovered_ollama (list[ModelInfo] | None): Optional list of dynamically discovered Ollama models.
+        show_all (bool): Whether to include unconfigured/unavailable models with non-connected status.
 
     Returns:
         list[ModelInfo]: List of configured model/processor information objects.
@@ -507,6 +583,7 @@ class LLMArenaClient:
         "name": m["name"],
         "provider": m["provider"],
         "is_local": m["is_local"],
+        "has_api_key": m["id"] not in self._unconfigured_cloud_ids,
       }
       for m in self.swarm
     ]
@@ -515,6 +592,7 @@ class LLMArenaClient:
       admin_settings=admin_settings,
       include_sql=include_sql,
       discovered_ollama=discovered_ollama,
+      show_all=show_all,
     )
 
   async def get_available_processors_async(
@@ -523,6 +601,7 @@ class LLMArenaClient:
     include_sql: bool = False,
     discover_ollama: bool = False,
     http_client: httpx.AsyncClient | None = None,
+    show_all: bool = False,
   ) -> list[ModelInfo]:
     """
     Asynchronously resolves all available processors (`SQL [no model]`, `gemma-4-sql`, discovered Ollama models, and `any-llm` models).
@@ -532,28 +611,99 @@ class LLMArenaClient:
         include_sql (bool): Whether to include the `SQL [no model]` processor option.
         discover_ollama (bool): Whether to dynamically query Ollama `/api/tags`.
         http_client (httpx.AsyncClient | None): Optional HTTP client for Ollama discovery.
+        show_all (bool): Whether to include unconfigured/unavailable models with non-connected status.
 
     Returns:
         list[ModelInfo]: Ordered list of selectable processors/models.
     """
-    discovered: list[ModelInfo] = []
+    discovered: list[ModelInfo] | None = None
     if discover_ollama:
       ollama_base = admin_settings.ollama_api_base if admin_settings else None
       disc_res = await self.discover_ollama_models_result(ollama_api_base=ollama_base, http_client=http_client)
-      if isinstance(disc_res, Ok):
-        discovered = disc_res.value
+      discovered = disc_res.value if isinstance(disc_res, Ok) else []
     models = self.get_available_models(
       admin_settings=admin_settings,
       include_sql=include_sql,
       discovered_ollama=discovered,
+      show_all=show_all,
     )
-    if (settings.GEMMA4_SQL_ENABLED or (admin_settings and admin_settings.gemma4_sql_enabled and include_sql)) and all(
-      m.processor_type != "GEMMA_4_SQL" for m in models
-    ):
+    gemma4_explicitly_enabled = bool(settings.GEMMA4_SQL_ENABLED) or bool(
+      admin_settings
+      and admin_settings.gemma4_sql_enabled
+      and include_sql
+      and (
+        not discover_ollama
+        or show_all
+        or bool(admin_settings.gemma4_sql_api_base)
+        or any("gemma4sql" in c.lower() for c in (admin_settings.configured_models or []))
+      )
+    )
+    if gemma4_explicitly_enabled and all(m.processor_type != "GEMMA_4_SQL" for m in models):
       gemma_info = build_gemma4_sql_model_info(admin_settings)
-      if not (admin_settings and admin_settings.visible_models) or gemma_info.id in admin_settings.visible_models:
+      if (gemma_info.status == "connected" or show_all) and (
+        show_all
+        or not (admin_settings and admin_settings.visible_models)
+        or gemma_info.id in admin_settings.visible_models
+      ):
         models.append(gemma_info)
     return models
+
+  async def _try_lightweight_ollama_fallback(
+    self,
+    client: LLMProviderClientProtocol | AnyLLM | Gemma4SqlProvider,
+    failed_model_name: str,
+    messages: list[dict[str, str]],
+    temperature: float,
+    max_tokens: int,
+    stop: list[str] | None,
+    admin_settings: AdminSettingsResponse | None,
+  ) -> str | None:
+    """
+    Attempts a single fallback completion using the primary discovered lightweight Ollama model
+    when a requested local Ollama model fails (e.g. `Connection error.` or unpulled heavy tag).
+
+    Args:
+        client (LLMProviderClientProtocol | AnyLLM | Gemma4SqlProvider): Active provider client.
+        failed_model_name (str): Original model tag that raised an exception.
+        messages (list[dict[str, str]]): OpenAI-formatted messages.
+        temperature (float): Sampling temperature.
+        max_tokens (int): Maximum completion tokens.
+        stop (list[str] | None): Optional stop sequences.
+        admin_settings (AdminSettingsResponse | None): Optional admin settings containing `ollama_api_base`.
+
+    Returns:
+        str | None: Trimmed completion content from the fallback model, or `None` if unavailable/failed.
+    """
+    ollama_base = admin_settings.ollama_api_base if admin_settings else None
+    disc_res = await self.discover_ollama_models_result(ollama_api_base=ollama_base)
+    if not isinstance(disc_res, Ok) or not disc_res.value:
+      return None
+
+    fallback_tag: str | None = None
+    for candidate in disc_res.value:
+      cand_tag = candidate.id.removeprefix("ollama:").removeprefix("ollama/")
+      if cand_tag != failed_model_name or normalize_ollama_tag_key(cand_tag) != normalize_ollama_tag_key(
+        failed_model_name
+      ):
+        fallback_tag = cand_tag
+        break
+
+    if not fallback_tag:
+      return None
+
+    try:
+      fallback_resp = await run_in_threadpool(
+        client.completion,
+        model=fallback_tag,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        stop=stop,
+      )
+      return _extract_completion_content(fallback_resp)
+    except Exception as fallback_exc:
+      logger.warning(f"Lightweight Ollama fallback '{fallback_tag}' also failed: {fallback_exc}")
+    return None
 
   async def _execute_provider_completion(
     self,
@@ -581,8 +731,10 @@ class LLMArenaClient:
     client = combatant["client"]
     name = str(combatant["name"])
     model_id = str(combatant["id"])
-    target_model_name = str(combatant["model_name"])
+    raw_target_model_name = str(combatant["model_name"])
     provider = str(combatant["provider"])
+    is_local_ollama = provider == "ollama" or (bool(combatant.get("is_local")) and provider in {"ollama", "openai"})
+    target_model_name = resolve_ollama_model_alias(raw_target_model_name) if is_local_ollama else raw_target_model_name
 
     start_time = time.time()
 
@@ -603,10 +755,11 @@ class LLMArenaClient:
       )
 
     try:
-      override_key: str | None = None
-      if admin_settings and admin_settings.api_keys and provider in admin_settings.api_keys:
-        override_key = admin_settings.api_keys[provider]
-
+      override_key = (
+        admin_settings.api_keys[provider]
+        if (admin_settings and admin_settings.api_keys and provider in admin_settings.api_keys)
+        else None
+      )
       if override_key is not None:
         response = await run_in_threadpool(
           client.completion,
@@ -630,12 +783,7 @@ class LLMArenaClient:
       duration_ms = int((time.time() - start_time) * 1000)
 
       try:
-        if not isinstance(response, CompletionChunkProtocol):
-          raise AttributeError("Response does not implement CompletionChunkProtocol")
-        first_choice = response.choices[0]
-        if not isinstance(first_choice, CompletionMessageChoiceProtocol) or first_choice.message.content is None:
-          raise AttributeError("Choice does not contain message content")
-        content = first_choice.message.content.strip()
+        content = _extract_completion_content(response)
         return ArenaResponse(provider_name=name, model_identifier=model_id, content=content, latency_ms=duration_ms)
       except (AttributeError, IndexError, TypeError):
         return ArenaResponse(
@@ -647,6 +795,25 @@ class LLMArenaClient:
         )
 
     except Exception as e:
+      if is_local_ollama:
+        fb_content = await self._try_lightweight_ollama_fallback(
+          client=client,
+          failed_model_name=raw_target_model_name,
+          messages=messages,
+          temperature=temperature,
+          max_tokens=max_tokens,
+          stop=stop,
+          admin_settings=admin_settings,
+        )
+        if fb_content is not None:
+          duration_ms = int((time.time() - start_time) * 1000)
+          return ArenaResponse(
+            provider_name=name,
+            model_identifier=model_id,
+            content=fb_content,
+            latency_ms=duration_ms,
+          )
+
       duration_ms = int((time.time() - start_time) * 1000)
       classified = classify_llm_error(provider=provider, model=target_model_name, raw_error=e)
       remediation = str(classified.details.get("remediation") or "").strip()

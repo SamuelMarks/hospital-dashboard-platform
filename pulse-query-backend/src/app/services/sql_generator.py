@@ -28,6 +28,7 @@ from app.schemas.execution import SqlRunnerResultDict
 from app.schemas.feedback import ExperimentResponse, FeedbackUpdate
 from app.schemas.json_types import JsonValue
 from app.services.admin import get_admin_settings
+from app.services.llm.error_classifier import classify_llm_error
 from app.services.llm_client import ArenaResponse, llm_client
 from app.services.prompt_engineering.few_shot_rag import FewShotRAGStrategy
 from app.services.prompt_engineering.interfaces import PromptStrategy
@@ -228,10 +229,10 @@ class SQLGeneratorService:
     first_res = results[0]
     if first_res.error:
       return Err(
-        AppError(
-          code=ErrorCode.LLM_PROVIDER_ERROR,
-          message=f"Model '{clean_proc}' failed to generate SQL: {first_res.error}",
-          status_code=502,
+        classify_llm_error(
+          provider=first_res.provider_name or clean_proc,
+          model=first_res.model_identifier or clean_proc,
+          raw_error=first_res.error,
         )
       )
 

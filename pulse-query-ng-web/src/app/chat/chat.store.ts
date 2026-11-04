@@ -169,10 +169,16 @@ export class ChatStore implements OnDestroy {
       .subscribe({
         next: (models: ModelInfo[]) => {
           const list = Array.isArray(models) ? models : [];
-          const hasSql = list.some((m) => m.id === 'SQL' || m.processor_type === 'SQL');
+          const connectedList = list.filter((m) => !m.status || m.status === 'connected');
+          const hasSql = connectedList.some((m) => m.id === 'SQL' || m.processor_type === 'SQL');
+          const finalModels = hasSql ? connectedList : [DEFAULT_CHAT_SQL_MODEL, ...connectedList];
+          const validIds = new Set(finalModels.map((m) => m.id));
+          const prunedSelected = this.selectedModelIds().filter((id) => validIds.has(id));
           this.patch({
-            availableModels: hasSql ? list : [DEFAULT_CHAT_SQL_MODEL, ...list],
+            availableModels: finalModels,
+            selectedModelIds: prunedSelected,
           });
+          this.verifyModelConnections(false);
         },
         error: (err: unknown) => this.logger.error('Failed to load models', err),
       });
@@ -211,7 +217,15 @@ export class ChatStore implements OnDestroy {
               remediation: match.remediation ?? null,
             };
           });
-          this.patch({ llmHealthSummary: summary, availableModels: updatedModels });
+          const unhealthyIds = new Set(
+            updatedModels.filter((m) => m.status && m.status !== 'connected').map((m) => m.id),
+          );
+          const prunedSelected = this.selectedModelIds().filter((id) => !unhealthyIds.has(id));
+          this.patch({
+            llmHealthSummary: summary,
+            availableModels: updatedModels,
+            selectedModelIds: prunedSelected,
+          });
         },
         error: (err: unknown) => this.logger.error('Failed to verify model connections', err),
       });

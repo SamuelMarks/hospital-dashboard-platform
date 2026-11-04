@@ -5,7 +5,7 @@
   </div>
 
   <div class="plot-area">
-    @for (refLine of processedReferenceLines(); track refLine.label) {
+    @for (refLine of processedReferenceLines(); track $index) {
       <div
         class="reference-line"
         [style.bottom]="refLine.bottomPct"
@@ -15,11 +15,42 @@
         <span class="reference-label">{{ refLine.label }}</span>
       </div>
     }
+
+    @if (mode() === 'line' && processedData().length > 0) {
+      <svg
+        class="line-svg"
+        data-testid="viz-line-svg"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <polyline
+          fill="none"
+          [attr.stroke]="getPalette(0)"
+          stroke-width="2"
+          vector-effect="non-scaling-stroke"
+          [attr.points]="linePolylinePoints()"
+        ></polyline>
+      </svg>
+    }
+
     <div class="bars-container">
-      @for (item of processedData(); track item.label) {
+      @for (item of processedData(); track $index) {
         <div class="col-wrapper" tabindex="0" [attr.aria-label]="item.label + ': ' + item.value">
-          @if (item.isStacked && item.segments) {
-            @for (seg of item.segments; track seg.label) {
+          @if (mode() === 'line') {
+            <div
+              class="line-point"
+              data-testid="viz-line-point"
+              [style.bottom]="item.pointBottomNum + '%'"
+              [style.background-color]="item.isNegative ? getPalette(-1) : getPalette(0)"
+            ></div>
+            <span class="bar-value-badge" [style.bottom]="item.topPct">{{ item.value }}</span>
+            <div class="tooltip" [style.bottom]="item.isNegative ? '-25px' : '100%'">
+              <strong>{{ item.label }}</strong
+              >: {{ item.value }}
+            </div>
+          } @else if (item.isStacked && item.segments) {
+            @for (seg of item.segments; track $index) {
               <div
                 class="bar-segment"
                 [style.background-color]="seg.color"
@@ -30,7 +61,7 @@
             <span class="bar-value-badge" [style.bottom]="item.topPct">{{ item.value }}</span>
             <div class="tooltip">
               <strong>{{ item.label }}</strong>
-              @for (seg of item.segments; track seg.label) {
+              @for (seg of item.segments; track $index) {
                 <div>{{ seg.label }}: {{ seg.value }}</div>
               }
             </div>
@@ -58,7 +89,7 @@
   </div>
 
   <div class="x-axis">
-    @for (item of processedData(); track item.label) {
+    @for (item of processedData(); track $index) {
       <div class="x-label" [title]="item.label">{{ item.label }}</div>
     }
   </div>

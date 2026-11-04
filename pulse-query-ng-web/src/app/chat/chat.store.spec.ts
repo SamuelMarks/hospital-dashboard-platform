@@ -107,7 +107,8 @@ describe('ChatStore', () => {
       expect(store.availableModels()[0]?.id).toBe('SQL');
       expect(store.error()).toBeNull();
 
-      // Also test when backend already includes SQL and when models is non-array
+      // Also test when backend already includes SQL, filters non-connected models, prunes selectedModelIds, and when models is non-array
+      store.patch({ selectedModelIds: ['m-1', 'stale-model', 'unconfigured-model'] });
       mockAiApi.listAvailableModelsApiV1AiModelsGet?.mockReturnValue(
         of([
           {
@@ -116,12 +117,28 @@ describe('ChatStore', () => {
             provider: 'sql',
             is_local: true,
             processor_type: 'SQL',
+            status: 'connected',
           },
-          { id: 'm-1', name: 'M1', provider: 'openai', is_local: false },
+          {
+            id: 'm-1',
+            name: 'M1',
+            provider: 'openai',
+            is_local: false,
+            status: 'connected',
+          },
+          {
+            id: 'unconfigured-model',
+            name: 'Unconfigured',
+            provider: 'anthropic',
+            is_local: false,
+            status: 'unconfigured',
+          },
         ]),
       );
       store.loadHistory();
       expect(store.availableModels().length).toBe(2);
+      expect(store.selectedModelIds()).toEqual(['m-1']);
+      expect(mockAiApi.getLlmHealthApiV1AiHealthGet).toHaveBeenCalledWith(false);
 
       mockAiApi.listAvailableModelsApiV1AiModelsGet?.mockReturnValue(of(null as never));
       store.loadHistory();
@@ -651,8 +668,9 @@ data: {"no_event":true}
   });
 
   describe('verifyModelConnections', () => {
-    it('enriches availableModels with live health probe statuses and handles unmatched models', () => {
+    it('enriches availableModels with live health probe statuses, deselects unhealthy models, and handles unmatched models', () => {
       store.patch({
+        selectedModelIds: ['ollama:llama3', 'gemini:gemini-2.5-flash'],
         availableModels: [
           { id: 'ollama:llama3', name: 'Ollama Llama 3', provider: 'ollama', is_local: true },
           { id: 'gemini:gemini-2.5-flash', name: 'Gemini', provider: 'gemini', is_local: false },
@@ -689,6 +707,7 @@ data: {"no_event":true}
       expect(store.availableModels()[0]?.remediation).toBe('Restart Ollama');
       expect(store.availableModels()[1]?.status).toBe('connected');
       expect(store.availableModels()[2]?.id).toBe('unmatched/model');
+      expect(store.selectedModelIds()).toEqual(['gemini:gemini-2.5-flash']);
     });
 
     it('handles undefined providers array, API errors, and missing getLlmHealthApiV1AiHealthGet method', () => {

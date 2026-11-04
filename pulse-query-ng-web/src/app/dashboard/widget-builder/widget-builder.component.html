@@ -167,6 +167,8 @@
           [xKey]="vizFormModel().xKey"
           [yKey]="vizFormModel().yKey"
           [previewWidget]="previewWidget()"
+          [previewData]="executionResult()"
+          [vizCompatibility]="vizCompatibility()"
           [(allowNaturalText)]="allowNaturalText"
           [(selectedProcessor)]="selectedProcessor"
           [(naturalTextPrompt)]="naturalTextPrompt"
@@ -186,8 +188,9 @@
           <button
             type="button"
             mat-flat-button
+            data-testid="btn-save-widget"
             (click)="saveAndClose()"
-            [disabled]="vizForm().invalid() || isBusy()"
+            [disabled]="vizForm().invalid() || isBusy() || !vizCompatibility().compatible"
           >
             @if (isBusy()) {
               <mat-spinner

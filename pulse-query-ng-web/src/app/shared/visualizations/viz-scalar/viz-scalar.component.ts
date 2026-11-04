@@ -6,6 +6,7 @@ import { Component, input, computed, Signal, inject, LOCALE_ID } from '@angular/
 import { formatNumber } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { toFiniteNumber } from '../viz-axis-inference.utils';
 
 /**
  * Input data payload accepted by `VizScalarComponent`.
@@ -119,16 +120,15 @@ export class VizScalarComponent {
       const row = d.data[0];
       if (row) {
         for (const k of Object.keys(row)) {
-          const cellVal = row[k];
-          if (typeof cellVal === 'number') {
-            return cellVal;
+          const num = toFiniteNumber(row[k]);
+          if (num !== null) {
+            return num;
           }
         }
       }
       return null;
     }
-    if (typeof d.value === 'number') return d.value;
-    return null;
+    return toFiniteNumber(d.value);
   });
 
   /** Computed formatted string representation of `value` (2 decimals for unit-interval values, locale string otherwise). */

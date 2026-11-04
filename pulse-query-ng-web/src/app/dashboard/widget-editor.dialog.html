@@ -57,17 +57,52 @@
     />
   </mat-form-field>
 
+  @if (widget.type !== 'TEXT') {
+    <label class="flex items-center gap-2 text-xs" style="color: var(--sys-text-secondary)">
+      <span i18n class="font-medium">Visualization:</span>
+      <select
+        data-testid="editor-viz-type-select"
+        i18n-aria-label
+        aria-label="Select widget visualization type"
+        class="border rounded px-2 py-2 text-xs"
+        style="
+          background-color: var(--sys-surface);
+          color: var(--sys-text-primary);
+          border-color: var(--sys-surface-border);
+        "
+        [value]="effectiveVisualization()"
+        (change)="updateVisualization(getEventValue($event))"
+      >
+        @for (vizOpt of availableVisualizations; track vizOpt.id) {
+          <option [value]="vizOpt.id">{{ vizOpt.label }}</option>
+        }
+      </select>
+    </label>
+  }
+
   <button
     i18n
     type="button"
     mat-stroked-button
     data-testid="btn-save-metadata"
-    [disabled]="isSaving()"
+    [disabled]="isSaving() || !vizCompatibility().compatible"
     (click)="saveSettings()"
   >
     Save Caption
   </button>
 </div>
+
+@if (!vizCompatibility().compatible) {
+  <div
+    class="px-6 py-2 text-xs font-medium flex items-center justify-between gap-2"
+    style="background-color: var(--sys-error-container); color: var(--sys-on-error-container)"
+    role="alert"
+    aria-live="polite"
+    data-testid="editor-viz-validation-error"
+  >
+    <span>{{ vizCompatibility().reason }}</span>
+  </div>
+}
 
 @if (errorMessage()) {
   <div

@@ -31,6 +31,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.a11y_heatmap_summary
+import pulsequery.composeapp.generated.resources.heatmap_insufficient_dimensions
 
 /**
  * 2D Matrix Heatmap visualization component for hospital operational metrics.
@@ -52,7 +56,7 @@ fun HeatmapChart(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Insufficient matrix dimensions for heatmap (requires at least 3 columns).",
+                text = stringResource(Res.string.heatmap_insufficient_dimensions),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -88,13 +92,14 @@ fun HeatmapChart(
     val targetColor = MaterialTheme.colorScheme.primary
 
     val hScroll = rememberScrollState()
+    val matrixSummaryDesc = stringResource(Res.string.a11y_heatmap_summary, yLabels.size, xLabels.size)
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(12.dp)
             .semantics {
-                contentDescription = "Heatmap matrix with ${yLabels.size} rows and ${xLabels.size} columns."
+                contentDescription = matrixSummaryDesc
             }
     ) {
         Row(

@@ -382,4 +382,13 @@
     <string name="chat_model_status_fmt">%1$s (%2$s)</string>
     <string name="chat_sql_preview_rows_fmt">DuckDB Result (%1$d rows)</string>
     <string name="chat_sql_preview_error_fmt">DuckDB Error: %1$s</string>
+    <string name="a11y_pie_chart_summary">Pie chart with %1$d slices: %2$s</string>
+    <string name="a11y_bar_chart_summary">Bar chart with %1$d items: %2$s</string>
+    <string name="a11y_line_chart_summary">Line chart with %1$d items: %2$s</string>
+    <string name="a11y_heatmap_summary">Heatmap matrix with %1$d rows and %2$d columns.</string>
+    <string name="a11y_table_view_summary">Table view with %1$d items: %2$s</string>
+    <string name="table_header_metric_label">Metric / Label</string>
+    <string name="table_header_value">Value</string>
+    <string name="heatmap_insufficient_dimensions">Insufficient matrix dimensions for heatmap (requires at least 3 columns).</string>
+    <string name="viz_incompat_banner_title">Visualization Not Applicable to SQL Result</string>
 </resources>

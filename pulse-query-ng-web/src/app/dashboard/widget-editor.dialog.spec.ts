@@ -203,10 +203,43 @@ describe('WidgetEditorDialog', () => {
     expect(component.columns()).toEqual([]);
   });
 
-  it('should detect pie visualization', () => {
+  it('should detect pie visualization and allow updating visualization type', () => {
     component.data.widget.visualization = 'pie';
     fixture.detectChanges();
     expect(component.isPie()).toBe(true);
+
+    component.updateVisualization('   ');
+    expect(component.selectedVisualization()).toBeNull();
+
+    component.updateVisualization('heatmap');
+    component.xKey.set(null);
+    component.yKey.set(null);
+    mockStore.dataMap.set({ w1: { columns: ['only_one_col'], data: [{ only_one_col: 1 }] } });
+    fixture.detectChanges();
+    expect(component.effectiveVisualization()).toBe('heatmap');
+    expect(component.supportsMapping()).toBe(true);
+    expect(component.isPie()).toBe(false);
+    expect(component.vizCompatibility().compatible).toBe(false);
+    expect(
+      fixture.debugElement.query(By.css('[data-testid="editor-viz-validation-error"]')),
+    ).toBeTruthy();
+
+    // Persist chosen visualization in saveSettings
+    mockStore.dataMap.set({
+      w1: { columns: ['svc', 'hr', 'load'], data: [{ svc: 'ICU', hr: 1, load: 10 }] },
+    });
+    const freshDash: DashboardResponse = {
+      id: 'd1',
+      name: 'Dash',
+      owner_id: 'u1',
+      widgets: [{ ...sqlWidget, config: { query: 'SELECT 1' } }],
+    };
+    mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(freshDash));
+    component.saveSettings();
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
+      'w1',
+      expect.objectContaining({ visualization: 'heatmap' }),
+    );
   });
 
   it('should fallback initialSql when query missing', () => {

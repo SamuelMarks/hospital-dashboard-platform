@@ -160,6 +160,34 @@ async def test_admin_ignore_unknown_setting_key(db_session: AsyncSession) -> Non
   assert isinstance(settings_res.api_keys, dict)
   assert isinstance(settings_res.visible_models, list)
 
+  from app.services.admin import _sanitize_persisted_model_entries
+
+  vis_cleaned = _sanitize_persisted_model_entries(
+    [
+      "   ",
+      "/mnt/data/ollama_models",
+      "ollama:gemma4:latest",
+      "gemma4:latest",
+      "ollama/gemma:2b",
+      "openai/gpt-4o",
+    ],
+    is_configured_list=False,
+  )
+  assert vis_cleaned == ["ollama:gemma:2b", "openai/gpt-4o"]
+
+  cfg_cleaned = _sanitize_persisted_model_entries(
+    [
+      "",
+      "ollama:/mnt/data/ollama_models",
+      "invalid_no_sep",
+      "ollama:gemma4:latest|Gemma 4",
+      "ollama:gemma:2b",
+      "openai/gpt-4o",
+    ],
+    is_configured_list=True,
+  )
+  assert cfg_cleaned == ["ollama:gemma:2b|Gemma 4", "openai/gpt-4o"]
+
 
 def test_verify_admin_key_constant_time_comparison() -> None:
   """Verifies `verify_admin_key` uses constant-time comparison and returns `Ok`/`Err` appropriately."""

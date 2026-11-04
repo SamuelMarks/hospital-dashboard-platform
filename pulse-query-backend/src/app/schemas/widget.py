@@ -23,6 +23,50 @@ from pydantic import BaseModel, Field, HttpUrl, ValidationError, model_validator
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.schemas.json_types import JsonObject, JsonValue
 
+CANONICAL_VISUALIZATION_ALIASES: dict[str, str] = {
+  "table": "table",
+  "grid": "table",
+  "metric": "metric",
+  "kpi": "metric",
+  "scalar": "scalar",
+  "gauge": "scalar",
+  "bar_chart": "bar_chart",
+  "barchart": "bar_chart",
+  "bar": "bar_chart",
+  "line_chart": "line_chart",
+  "line_graph": "line_chart",
+  "linechart": "line_chart",
+  "line": "line_chart",
+  "pie_chart": "pie_chart",
+  "pie": "pie_chart",
+  "donut": "pie_chart",
+  "heatmap": "heatmap",
+  "matrix": "heatmap",
+  "markdown": "markdown",
+  "text": "markdown",
+  "note": "markdown",
+}
+
+
+def normalize_visualization_type(raw_viz: str | None, widget_type: str | None = None) -> str:
+  """
+  Normalizes a raw visualization wire string and optional widget source type into a canonical identifier.
+
+  Args:
+      raw_viz (str | None): Raw visualization identifier (e.g., `'pie'`, `'pie_chart'`, `'line_graph'`).
+      widget_type (str | None): Optional widget source type (`'SQL'`, `'HTTP'`, `'TEXT'`).
+
+  Returns:
+      str: Canonical visualization identifier (`'table'`, `'metric'`, `'scalar'`, `'bar_chart'`,
+           `'line_chart'`, `'pie_chart'`, `'heatmap'`, `'markdown'`, or `'unknown'`).
+  """
+  if widget_type and widget_type.strip().upper() == "TEXT":
+    return "markdown"
+  cleaned = raw_viz.strip().lower() if isinstance(raw_viz, str) else ""
+  if not cleaned:
+    return "table"
+  return CANONICAL_VISUALIZATION_ALIASES.get(cleaned, "unknown")
+
 
 def is_valid_processor_identifier(processor: str) -> bool:
   """

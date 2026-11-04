@@ -20,6 +20,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.a11y_bar_chart_summary
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -59,11 +62,12 @@ fun BarChart(
 
     val textMeasurer: TextMeasurer = rememberTextMeasurer()
     val maxValue = max(data.maxOf { it.second }, 1f)
-    val chartDescription = data.joinToString(separator = ", ") { "${it.first}: ${it.second}" }
+    val itemsSummary = data.joinToString(separator = ", ") { "${it.first}: ${it.second}" }
+    val chartDescription = stringResource(Res.string.a11y_bar_chart_summary, data.size, itemsSummary)
 
     Canvas(
         modifier = modifier.fillMaxSize().padding(16.dp).semantics {
-            contentDescription = "Bar chart with ${data.size} items: $chartDescription"
+            contentDescription = chartDescription
         }
     ) {
         val canvasWidth = size.width

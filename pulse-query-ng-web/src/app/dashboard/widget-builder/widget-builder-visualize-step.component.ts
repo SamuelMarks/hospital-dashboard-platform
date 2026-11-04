@@ -2,10 +2,11 @@
  * @fileoverview Visualization configuration step subcomponent for `WidgetBuilderComponent`.
  *
  * Provides widget title, visualization type chips, X/Y axis column selectors,
- * and live `WidgetComponent` preview.
+ * SQL-to-visualization compatibility validation banners, and live `WidgetComponent` preview.
  */
 
 import { Component, computed, input, model, output } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -21,6 +22,11 @@ import {
   ProcessorOption,
   SQL_NO_MODEL_OPTION,
 } from '../../shared/services/processor-catalog.service';
+import {
+  CanonicalVisualizationType,
+  formatVizLabel,
+  VisualizationCompatibilityResult,
+} from '../../shared/visualizations/viz-compatibility.utils';
 
 /**
  * Metadata describing a selectable visualization type option.
@@ -40,6 +46,7 @@ export interface VisualizationOption {
 @Component({
   selector: 'app-widget-builder-visualize-step',
   imports: [
+    MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
     MatChipsModule,
@@ -159,6 +166,7 @@ export interface VisualizationOption {
               (keydown.space)="selectVisualization(viz.id); $event.preventDefault()"
               role="button"
               tabindex="0"
+              [attr.data-testid]="'viz-chip-' + viz.id"
               [attr.aria-pressed]="selectedVisualization() === viz.id"
               [attr.aria-selected]="selectedVisualization() === viz.id"
               class="w-full viz-option"
@@ -167,6 +175,54 @@ export interface VisualizationOption {
             </mat-chip-option>
           }
         </mat-chip-listbox>
+
+        @if (vizCompatibility(); as compat) {
+          @if (!compat.compatible) {
+            <div
+              class="p-3 rounded border mb-4 text-xs"
+              style="
+                background-color: var(--sys-error-container);
+                color: var(--sys-on-error-container);
+                border-color: var(--sys-error);
+              "
+              role="alert"
+              data-testid="builder-viz-validation-error"
+            >
+              <div class="font-semibold mb-1" i18n>Incompatible Visualization</div>
+              <div class="mb-2">{{ compat.reason }}</div>
+              @if (compat.suggestedVisualizations.length > 0) {
+                <div class="flex flex-wrap gap-1">
+                  @for (sug of compat.suggestedVisualizations; track sug) {
+                    <button
+                      type="button"
+                      mat-stroked-button
+                      class="text-xs"
+                      [attr.data-testid]="'builder-btn-suggest-viz-' + sug"
+                      (click)="selectVisualization(sug)"
+                    >
+                      {{ formatSuggestedViz(sug) }}
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          } @else if (compat.warnings.length > 0) {
+            <div
+              class="p-3 rounded border mb-4 text-xs"
+              style="
+                background-color: var(--sys-surface);
+                color: var(--sys-text-secondary);
+                border-color: var(--sys-surface-border);
+              "
+              role="status"
+              data-testid="builder-viz-validation-warning"
+            >
+              @for (w of compat.warnings; track w.code) {
+                <div>{{ w.message }}</div>
+              }
+            </div>
+          }
+        }
 
         @if (showAxesConfig()) {
           <mat-divider class="mb-4"></mat-divider>
@@ -210,7 +266,11 @@ export interface VisualizationOption {
           aria-live="polite"
         >
           @if (previewWidget(); as w) {
-            <app-widget [widget]="w" class="flex-grow h-full w-full"></app-widget>
+            <app-widget
+              [widget]="w"
+              [dataOverride]="previewData()"
+              class="flex-grow h-full w-full"
+            ></app-widget>
           }
         </div>
       </div>
@@ -263,6 +323,10 @@ export class WidgetBuilderVisualizeStepComponent {
   readonly yKey = model<string | null>(null);
   /** Live preview widget snapshot. */
   readonly previewWidget = input<WidgetResponse | null>(null);
+  /** Optional preview execution result passed to `<app-widget [dataOverride]>`. */
+  readonly previewData = input<unknown>(undefined);
+  /** Optional SQL-to-visualization compatibility evaluation result. */
+  readonly vizCompatibility = input<VisualizationCompatibilityResult | null>(null);
   /** Whether the widget allows user natural text input on the dashboard (two-way bound). */
   readonly allowNaturalText = model<boolean>(false);
   /** Selected processor ID (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`) (two-way bound). */
@@ -301,6 +365,16 @@ export class WidgetBuilderVisualizeStepComponent {
   selectVisualization(vizId: string): void {
     this.selectedVisualization.set(vizId);
     this.vizTypeChange.emit(vizId);
+  }
+
+  /**
+   * Formats a suggested canonical visualization identifier into a localized label.
+   *
+   * @param viz - Canonical visualization identifier.
+   * @returns Localized display label.
+   */
+  formatSuggestedViz(viz: CanonicalVisualizationType): string {
+    return formatVizLabel(viz);
   }
 
   /**

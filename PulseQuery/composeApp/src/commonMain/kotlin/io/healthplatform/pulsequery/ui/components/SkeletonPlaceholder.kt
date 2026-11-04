@@ -79,7 +79,7 @@ fun WidgetSkeletonPlaceholder(
             }
     ) {
         when (visualization) {
-            VisualizationType.METRIC -> {
+            VisualizationType.METRIC, VisualizationType.SCALAR -> {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,

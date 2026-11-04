@@ -3,6 +3,7 @@
  */
 
 import { Component, input, computed, Signal } from '@angular/core';
+import { toFiniteNumber } from '../viz-axis-inference.utils';
 
 /**
  * Input data payload accepted by `VizMetricComponent`.
@@ -278,15 +279,15 @@ export class VizMetricComponent {
 
   /** Computed CSS class (`'val-warn'`, `'val-critical'`, or `''`) based on configured thresholds. */
   readonly alertClass: Signal<string> = computed(() => {
-    const val = this.displayValue();
+    const numVal = toFiniteNumber(this.displayValue());
     const conf = this.config();
 
-    if (typeof val !== 'number' || !conf?.thresholds) return '';
+    if (numVal === null || !conf?.thresholds) return '';
 
     const { warning, critical } = conf.thresholds;
 
-    if (critical !== undefined && val >= critical) return 'val-critical';
-    if (warning !== undefined && val >= warning) return 'val-warn';
+    if (critical !== undefined && numVal >= critical) return 'val-critical';
+    if (warning !== undefined && numVal >= warning) return 'val-warn';
 
     return '';
   });

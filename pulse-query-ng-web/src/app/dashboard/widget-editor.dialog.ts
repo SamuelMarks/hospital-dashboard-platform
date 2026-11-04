@@ -1,6 +1,7 @@
 /**
  * @fileoverview Modal dialog component for editing an existing dashboard widget's
- * data source configuration and visualization column mappings.
+ * data source configuration, visualization type, SQL-to-visualization compatibility,
+ * and visualization column mappings.
  */
 import {
   Component,
@@ -32,6 +33,12 @@ import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { HttpConfigComponent } from '../editors/http-config.component';
 import { ProcessorCatalogService } from '../shared/services/processor-catalog.service';
 import { extractEventInputValue } from '../shared/utils/dom-event.utils';
+import {
+  normalizeVisualizationType,
+  validateVisualizationCompatibility,
+} from '../shared/visualizations/viz-compatibility.utils';
+import { narrowRecordPayload, parseTableDataSet } from '../widget/widget-data.guards';
+import { CANONICAL_VISUALIZATIONS } from './widget-builder/widget-builder.store';
 
 /**
  * Data interface for the Dialog Injection.
@@ -50,7 +57,8 @@ export interface WidgetEditorData {
  *
  * Features:
  * 1. Hosts the Data Source Editor (SQL/HTTP).
- * 2. NEW: Provides Visualization Column Mapping options when result data is available.
+ * 2. Provides Visualization Type switching and SQL-to-visualization compatibility validation.
+ * 3. Provides Visualization Column Mapping options when result data is available.
  */
 @Component({
   selector: 'app-widget-editor-dialog',
@@ -117,11 +125,17 @@ export class WidgetEditorDialog implements OnInit {
   /** Processor catalog service providing `SQL [no model]`, Ollama models, and `any-llm` models. */
   readonly processorCatalog = inject(ProcessorCatalogService);
 
+  /** Canonical visualization options selectable in the editor. */
+  readonly availableVisualizations = CANONICAL_VISUALIZATIONS;
+
   /** Whether a widget update operation is currently in progress. */
   readonly isSaving = signal(false);
 
   /** Latest error message encountered while saving widget settings, or `null`. */
   readonly errorMessage = signal<string | null>(null);
+
+  /** Optional user-selected visualization type override when changed in the editor. */
+  readonly selectedVisualization = signal<string | null>(null);
 
   /** Editable widget title synchronized from widget configuration. */
   readonly title = linkedSignal<string>(() => this.data.widget.title || '');
@@ -195,6 +209,27 @@ export class WidgetEditorDialog implements OnInit {
     return this.data.widget;
   }
 
+  /**
+   * Returns the effective visualization identifier (user override if selected, otherwise `widget.visualization`).
+   *
+   * @returns Active visualization type string.
+   */
+  effectiveVisualization(): string {
+    return this.selectedVisualization() ?? this.widget.visualization;
+  }
+
+  /**
+   * Updates `selectedVisualization` when the user chooses a new visualization type in the editor.
+   *
+   * @param viz - Selected canonical visualization identifier.
+   */
+  updateVisualization(viz: string): void {
+    const trimmed = viz.trim();
+    if (trimmed) {
+      this.selectedVisualization.set(trimmed);
+    }
+  }
+
   /** Extract SQL for the editor. */
   readonly initialSql: Signal<string> = computed(() => {
     const query = this.widget.config['query'];
@@ -207,8 +242,8 @@ export class WidgetEditorDialog implements OnInit {
    * @returns True if the visualization type supports column mapping.
    */
   supportsMapping(): boolean {
-    const v = this.widget.visualization.toLowerCase();
-    return ['bar_chart', 'line_graph', 'pie'].includes(v);
+    const norm = normalizeVisualizationType(this.effectiveVisualization(), this.widget.type);
+    return ['bar_chart', 'line_chart', 'pie_chart', 'heatmap'].includes(norm);
   }
 
   /**
@@ -217,12 +252,31 @@ export class WidgetEditorDialog implements OnInit {
    * @returns True if the visualization type is a pie chart.
    */
   isPie(): boolean {
-    return this.widget.visualization === 'pie';
+    return (
+      normalizeVisualizationType(this.effectiveVisualization(), this.widget.type) === 'pie_chart'
+    );
   }
 
   /** Available columns from the latest execution result. */
   readonly columns = computed(() => {
     return extractWidgetColumns(this.store.dataMap()[this.widget.id]);
+  });
+
+  /**
+   * Computed SQL-to-visualization compatibility status for the active widget dataset and editor settings.
+   */
+  readonly vizCompatibility = computed(() => {
+    const raw = this.selectedVisualization() ?? this.widget.visualization;
+    const ds = parseTableDataSet(narrowRecordPayload(this.store.dataMap()[this.widget.id]));
+    return validateVisualizationCompatibility(
+      raw,
+      ds,
+      {
+        xKey: this.xKey(),
+        yKey: this.yKey(),
+      },
+      this.widget.type,
+    );
   });
 
   /**
@@ -238,7 +292,7 @@ export class WidgetEditorDialog implements OnInit {
   }
 
   /**
-   * Saves the Column Mapping configuration.
+   * Saves the Column Mapping and Visualization configuration.
    * Merges with existing config to prevent overwriting Query/URL logic.
    */
   saveSettings(): void {
@@ -293,9 +347,11 @@ export class WidgetEditorDialog implements OnInit {
           }
 
           // 3. Persist
+          const chosenViz = this.selectedVisualization();
           const update: WidgetUpdate = {
             title: trimmedTitle,
             subtitle: trimmedSubtitle || null,
+            ...(chosenViz ? { visualization: chosenViz } : {}),
             config: newConfig,
           };
           this.dashboardsApi

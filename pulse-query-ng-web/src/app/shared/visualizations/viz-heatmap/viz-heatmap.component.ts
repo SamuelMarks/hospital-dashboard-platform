@@ -4,7 +4,9 @@
 
 import { Component, input, computed } from '@angular/core';
 import { TableDataSet } from '../viz-table/viz-table.component';
+import { ChartConfig } from '../viz-chart/viz-chart.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { toFiniteNumber } from '../viz-axis-inference.utils';
 
 /**
  * Computed 2D heatmap matrix representation.
@@ -58,7 +60,6 @@ export interface HeatmapMatrix {
         border: 1px solid var(--sys-on-surface);
         z-index: 10;
       }
-      /* ... labels / legend styles ... */
       .legend-bar {
         width: 100px;
         height: 8px;
@@ -72,17 +73,21 @@ export interface HeatmapMatrix {
 export class VizHeatmapComponent {
   /** Tabular dataset whose first three columns represent Y category, X category, and numeric intensity. */
   readonly dataSet = input<TableDataSet | null | undefined>(null);
+  /** Optional axis mapping configuration (`xKey` for X-axis bucket, `yKey` for intensity metric). */
+  readonly config = input<ChartConfig | undefined>();
 
   /**
    * Computed 2D matrix representation containing sorted X/Y axis headers, a coordinate-to-value lookup map, and min/max bounds.
    */
   readonly matrix = computed<HeatmapMatrix | null>(() => {
     const ds = this.dataSet();
-    if (!ds || ds.data.length === 0) return null;
+    if (!ds || ds.data.length === 0 || ds.columns.length < 3) return null;
     const cols = ds.columns;
+    const conf = this.config();
     const yKey = String(cols[0]);
-    const xKey = String(cols[1]);
+    const xKey = conf?.xKey && cols.includes(conf.xKey) ? conf.xKey : String(cols[1]);
     const valKey =
+      (conf?.yKey && cols.includes(conf.yKey) ? conf.yKey : undefined) ||
       cols.find((c) => c.toLowerCase() === 'net_bottleneck') ||
       String(cols.length > 3 ? cols[cols.length - 1] : cols[2]);
 
@@ -95,7 +100,7 @@ export class VizHeatmapComponent {
     ds.data.forEach((row) => {
       const x = String(row[xKey]);
       const y = String(row[yKey]);
-      const val = Number(row[valKey]) || 0;
+      const val = toFiniteNumber(row[valKey]) ?? 0;
       xSet.add(x);
       ySet.add(y);
       dataMap.set(`${x}:${y}`, val);

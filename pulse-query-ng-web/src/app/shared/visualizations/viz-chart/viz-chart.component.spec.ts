@@ -280,4 +280,39 @@ describe('VizChartComponent', () => {
 
     expect(updateSpy).not.toHaveBeenCalled();
   });
+
+  it('should render SVG trend line and points when mode is "line"', () => {
+    fixture.componentRef.setInput('mode', 'line');
+    fixture.componentRef.setInput('dataSet', {
+      columns: ['day', 'admissions'],
+      data: [],
+    });
+    fixture.detectChanges();
+    expect(component.linePolylinePoints()).toBe('');
+    expect(component.chartAriaLabel()).toContain('Line chart');
+
+    // Single point in line mode
+    fixture.componentRef.setInput('dataSet', {
+      columns: ['day', 'admissions'],
+      data: [{ day: 'Mon', admissions: 10 }],
+    });
+    fixture.detectChanges();
+    expect(component.linePolylinePoints()).toContain('50.00,');
+
+    // Multi point in line mode (including negative point)
+    fixture.componentRef.setInput('dataSet', {
+      columns: ['day', 'admissions'],
+      data: [
+        { day: 'Mon', admissions: 10 },
+        { day: 'Tue', admissions: -5 },
+        { day: 'Wed', admissions: 20 },
+      ],
+    });
+    fixture.detectChanges();
+
+    const svgEl = fixture.debugElement.query(By.css('[data-testid="viz-line-svg"]'));
+    expect(svgEl).toBeTruthy();
+    const pointEls = fixture.debugElement.queryAll(By.css('[data-testid="viz-line-point"]'));
+    expect(pointEls.length).toBe(3);
+  });
 });

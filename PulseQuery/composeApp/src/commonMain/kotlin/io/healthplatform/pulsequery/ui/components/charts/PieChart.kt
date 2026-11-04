@@ -25,6 +25,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.a11y_pie_chart_summary
 import kotlin.math.min
 
 /**
@@ -51,8 +54,8 @@ fun PieChart(
     if (data.isEmpty()) return
 
     val total = data.sumOf { it.second.toDouble() }.toFloat()
-    val chartDescription = "Pie chart with ${data.size} slices: " +
-        data.joinToString(separator = ", ") { "${it.first}: ${it.second}" }
+    val slicesSummary = data.joinToString(separator = ", ") { "${it.first}: ${it.second}" }
+    val chartDescription = stringResource(Res.string.a11y_pie_chart_summary, data.size, slicesSummary)
 
     Column(
         modifier = modifier

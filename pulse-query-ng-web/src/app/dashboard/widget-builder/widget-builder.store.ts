@@ -28,17 +28,25 @@ import {
 } from '../dashboard-grid-layout.utils';
 import { extractWidgetColumns } from '../dashboard.models';
 import { DashboardStore } from '../dashboard.store';
+import {
+  normalizeVisualizationType,
+  validateSqlQueryForVisualization,
+  validateVisualizationCompatibility,
+  VisualizationCompatibilityResult,
+} from '../../shared/visualizations/viz-compatibility.utils';
+import { parseTableDataSet, narrowRecordPayload } from '../../widget/widget-data.guards';
 import { VisualizationOption } from './widget-builder-visualize-step.component';
 
 /** Sentinel ID used for client-memory draft widgets prior to final persistence. */
 export const LOCAL_DRAFT_WIDGET_ID = 'draft-local';
 
 /**
- *Canonical visualization options supported across frontend and backend.
+ * Canonical visualization options supported across frontend and backend.
  */
 export const CANONICAL_VISUALIZATIONS: VisualizationOption[] = [
   { id: 'table', icon: 'table_chart', label: $localize`Table` },
   { id: 'metric', icon: 'exposure_plus_1', label: $localize`Metric Card` },
+  { id: 'scalar', icon: 'speed', label: $localize`Scalar Gauge` },
   { id: 'bar_chart', icon: 'bar_chart', label: $localize`Bar Chart` },
   { id: 'pie_chart', icon: 'pie_chart', label: $localize`Pie Chart` },
   { id: 'line_chart', icon: 'show_chart', label: $localize`Line Chart` },
@@ -148,15 +156,17 @@ export class WidgetBuilderStore {
 
   /** Whether to show axis config options. */
   readonly showAxesConfig = computed(() => {
-    if (this.draftWidget()?.type === 'TEXT') return false;
-    const viz = this.draftWidget()?.visualization;
-    return ['bar_chart', 'pie_chart', 'line_chart', 'pie', 'line_graph'].includes(viz || '');
+    const w = this.draftWidget();
+    if (!w || w.type === 'TEXT') return false;
+    const norm = normalizeVisualizationType(w.visualization, w.type);
+    return ['bar_chart', 'pie_chart', 'line_chart', 'heatmap'].includes(norm);
   });
 
   /** Whether visualization is Pie chart. */
   readonly isPie = computed(() => {
-    const viz = this.draftWidget()?.visualization;
-    return viz === 'pie_chart' || viz === 'pie';
+    const w = this.draftWidget();
+    if (!w) return false;
+    return normalizeVisualizationType(w.visualization, w.type) === 'pie_chart';
   });
 
   /** Available columns from single-query preview execution or dashboard store dataMap. */
@@ -175,13 +185,53 @@ export class WidgetBuilderStore {
     return this.activeMode() === 'template' ? this.templateFormValid() : true;
   });
 
-  /** Strongly typed computed table dataset derived from `executionResult`. */
+  /** Strongly typed computed table dataset derived from `executionResult` or `dashboardStore.dataMap`. */
   readonly previewTableData = computed(() => {
     const res = this.executionResult();
-    return {
-      columns: res?.columns ?? [],
-      data: res?.data ?? [],
-    };
+    if (res) {
+      return {
+        columns: res.columns ?? [],
+        data: res.data ?? [],
+      };
+    }
+    const id = this.draftWidgetId();
+    const storeTable = id
+      ? parseTableDataSet(narrowRecordPayload(this.dashboardStore.dataMap()[id]))
+      : undefined;
+    return storeTable ?? { columns: [], data: [] };
+  });
+
+  /**
+   * Computed SQL-to-visualization compatibility status for the active draft widget and preview dataset.
+   */
+  readonly vizCompatibility = computed<VisualizationCompatibilityResult>(() => {
+    const w = this.draftWidget();
+    if (!w) {
+      return {
+        compatible: true,
+        normalizedViz: 'table',
+        suggestedVisualizations: ['table'],
+        warnings: [],
+      };
+    }
+    const formVal = this.vizFormModel();
+    const tableData = this.previewTableData();
+    if (tableData.columns.length > 0 || w.type !== 'SQL') {
+      return validateVisualizationCompatibility(
+        w.visualization,
+        tableData,
+        {
+          xKey: formVal.xKey,
+          yKey: formVal.yKey,
+        },
+        w.type,
+      );
+    }
+    const q = w.config['query'];
+    if (typeof q === 'string' && q.trim().length > 0) {
+      return validateSqlQueryForVisualization(q, w.visualization);
+    }
+    return validateVisualizationCompatibility(w.visualization, tableData, null, w.type);
   });
 
   /**
