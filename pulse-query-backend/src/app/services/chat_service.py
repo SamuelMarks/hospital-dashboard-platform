@@ -10,7 +10,7 @@ generation for conversational analytics.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncGenerator, Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
 from datetime import UTC, datetime
 import json
 import logging
@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 import sqlglot
 
+from app.core.i18n import get_translated_message
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.models.chat import Conversation, Message, MessageCandidate
 from app.models.user import User
@@ -37,9 +38,10 @@ from app.schemas.chat import (
   MessageVoteRequest,
   SqlPreviewPayload,
 )
+from app.schemas.json_types import SqlRow
 from app.services.admin import get_admin_settings
 from app.services.llm.error_classifier import classify_llm_error, format_classified_error_markdown
-from app.services.llm_client import ArenaResponse, LLMArenaClient, llm_client
+from app.services.llm_client import ArenaResponse, LLMArenaClient, SwarmCombatantDict, llm_client, pad_arena_responses
 from app.services.schema import SchemaService, schema_service
 from app.services.sql_generator import sql_generator
 from app.services.sql_utils import sql_fingerprint
@@ -49,6 +51,89 @@ logger = logging.getLogger(__name__)
 AdminSettingsFn = Callable[[AsyncSession], Awaitable[AdminSettingsResponse]]
 
 _DIRECT_SQL_MODEL_IDS: frozenset[str] = frozenset({"sql", "sql [no model]", "sql/duckdb", "sql:duckdb"})
+
+_MODEL_IDENTITY_QUERY_RE: re.Pattern[str] = re.compile(
+  r"^\s*(?:what\s+is\s+my\s+model|what\s+model\s+(?:are\s+you|is\s+this|am\s+i\s+using)|which\s+(?:model|llm)\s+(?:are\s+you|is\s+this|am\s+i\s+using)|what\s+is\s+your\s+model(?:\s+name)?)\s*[?.!]*\s*$",
+  re.IGNORECASE,
+)
+
+_RAW_SQL_START_RE: re.Pattern[str] = re.compile(
+  r"^\s*(?:--|/\*|SELECT\b|WITH\b|PRAGMA\b|EXPLAIN\b|VALUES\b|SHOW\b|DESCRIBE\b)",
+  re.IGNORECASE,
+)
+
+
+def is_model_identity_query(user_query: str | None) -> bool:
+  """
+  Checks whether the user prompt is a meta-question asking for the active LLM model identifier
+  (e.g., `'What is my model'`).
+
+  Args:
+      user_query (str | None): Raw user message text.
+
+  Returns:
+      bool: True if the query asks for the active model identity, False otherwise.
+  """
+  if not user_query:
+    return False
+  return bool(_MODEL_IDENTITY_QUERY_RE.match(user_query.strip()))
+
+
+def _resolve_combatant_identifier(combatant: SwarmCombatantDict) -> str:
+  """
+  Resolves the canonical model identifier from a swarm combatant dictionary,
+  falling back to `model_name`, `name`, or `'unknown'` without assuming a specific model.
+
+  Args:
+      combatant (SwarmCombatantDict): Active swarm combatant dictionary.
+
+  Returns:
+      str: Resolved model identifier string.
+  """
+  raw_id = combatant.get("id") or combatant.get("model_name") or combatant.get("name") or "unknown"
+  return str(raw_id).strip() or "unknown"
+
+
+def build_model_identity_sql_block(model_identifier: str, provider_name: str = "") -> str:
+  """
+  Constructs a SQL-only markdown block answering a model-identity query using a `SELECT '<model>'`
+  query and `--` SQL comments explaining the SQL.
+
+  Args:
+      model_identifier (str): Model identifier string (e.g., `'ollama:gemma:2b'`).
+      provider_name (str): Human-readable provider display name.
+
+  Returns:
+      str: Markdown ` ```sql ` block containing only `--` SQL comments and a `SELECT` statement.
+  """
+  clean_model = model_identifier.strip()
+  for prefix in (
+    "ollama:",
+    "ollama/",
+    "gemma4sql:",
+    "gemma4sql/",
+    "gemma-4-sql:",
+    "gemma-4-sql/",
+    "gemini:",
+    "gemini/",
+    "openai:",
+    "openai/",
+    "anthropic:",
+    "anthropic/",
+    "mistral:",
+    "mistral/",
+    "llamacpp:",
+    "llamacpp/",
+    "mock:",
+    "mock/",
+  ):
+    if clean_model.lower().startswith(prefix):
+      clean_model = clean_model[len(prefix) :]
+      break
+  safe_literal = clean_model.replace("'", "''") or "unknown"
+  label = provider_name.strip() or model_identifier.strip() or safe_literal
+  nl = chr(10)
+  return f"```sql{nl}-- Active LLM processor for this query: {label}{nl}SELECT '{safe_literal}' AS model;{nl}```"
 
 
 def _is_valid_sql_block(candidate_sql: str) -> bool:
@@ -65,9 +150,32 @@ def _is_valid_sql_block(candidate_sql: str) -> bool:
   return bool(parsed and any(stmt for stmt in parsed if stmt and not isinstance(stmt, sqlglot.exp.Column)))
 
 
+def _validate_first_sql_candidate(candidates: Sequence[str], log_failures: bool = False) -> str | None:
+  """
+  Iterates over candidate SQL strings and returns the first one that validates as DuckDB SQL.
+
+  Args:
+      candidates (Sequence[str]): Candidate SQL snippets to validate.
+      log_failures (bool): Whether to log a warning when `sqlglot` validation raises an error.
+
+  Returns:
+      str | None: First valid SQL query string, or None if none validate.
+  """
+  for candidate in candidates:
+    candidate_sql = str(candidate).strip()
+    if candidate_sql:
+      try:
+        if _is_valid_sql_block(candidate_sql):
+          return candidate_sql
+      except (sqlglot.errors.SqlglotError, ValueError, TypeError, RuntimeError) as e:
+        if log_failures:
+          logger.warning(f"Explicit SQL block failed validation: {e}")
+  return None
+
+
 def extract_and_validate_chat_sql(text: str | None) -> str | None:
   """
-  Scans text for Markdown SQL blocks (or raw SQL if the text itself is a SQL statement),
+  Scans text for Markdown SQL blocks (or raw SQL + SQL comments if no code fence is present),
   extracts the first valid statement, and performs a syntax check using `sqlglot`.
 
   Args:
@@ -80,24 +188,18 @@ def extract_and_validate_chat_sql(text: str | None) -> str | None:
     return None
 
   sql_matches: list[str] = re.findall(r"```sql\s+(.*?)\s*```", text, re.DOTALL | re.IGNORECASE)
-  for candidate in sql_matches:
-    candidate_sql = str(candidate).strip()
-    if candidate_sql:
-      try:
-        if _is_valid_sql_block(candidate_sql):
-          return candidate_sql
-      except (sqlglot.errors.SqlglotError, ValueError, TypeError, RuntimeError) as e:
-        logger.warning(f"Explicit SQL block failed validation: {e}")
+  explicit_valid = _validate_first_sql_candidate(sql_matches, log_failures=True)
+  if explicit_valid is not None:
+    return explicit_valid
 
   generic_matches: list[str] = re.findall(r"```(?:[a-zA-Z0-9_-]+)?\s+(.*?)\s*```", text, re.DOTALL)
-  for candidate in generic_matches:
-    candidate_sql = str(candidate).strip()
-    if candidate_sql:
-      try:
-        if _is_valid_sql_block(candidate_sql):
-          return candidate_sql
-      except (sqlglot.errors.SqlglotError, ValueError, TypeError, RuntimeError):
-        continue
+  generic_valid = _validate_first_sql_candidate(generic_matches, log_failures=False)
+  if generic_valid is not None:
+    return generic_valid
+
+  stripped_raw = text.strip()
+  if "```" not in stripped_raw and _RAW_SQL_START_RE.match(stripped_raw):
+    return _validate_first_sql_candidate([stripped_raw], log_failures=False)
 
   return None
 
@@ -144,6 +246,9 @@ def build_chat_system_prompt(schema_context: str) -> str:
   """
   Constructs the system prompt for the Hospital Analytics Chat Assistant.
 
+  Enforces the strict platform policy that LLMs are ONLY permitted to generate
+  read-only DuckDB SQL and SQL comments (`-- ...`) explaining the SQL.
+
   Args:
       schema_context (str): Formatted database schema and macro documentation string.
 
@@ -151,13 +256,45 @@ def build_chat_system_prompt(schema_context: str) -> str:
       str: Complete system prompt string.
   """
   header = (
-    "You are an expert Hospital Analytics Assistant. "
-    "Answer questions using DuckDB SQL based on the schema below. "
-    "If the user asks for data, output the SQL Query inside a markdown block ```sql ... ```. "
-    "Do not execute DML (INSERT/UPDATE). "
+    "You are an expert Hospital Analytics SQL Generator. "
+    "You are ONLY permitted to generate valid read-only DuckDB SQL and SQL comments (-- ...) explaining the SQL. "
+    "Output your response strictly inside a single markdown block ```sql ... ``` containing only SQL comments and SQL statements. "
+    "Never output conversational prose outside SQL comments. "
+    "If the user asks for your model name, output `SELECT '<model_name>' AS model;` with a `--` SQL comment. "
+    "Do not execute or generate DML/DDL (INSERT/UPDATE/DELETE/DROP)."
   )
   nl = chr(10)
   return f"{header}{nl}{nl}Schema:{nl}{schema_context}"
+
+
+def _format_markdown_table(columns: Sequence[str], data: Sequence[SqlRow]) -> str:
+  """
+  Formats tabular query results into a standard Markdown table string.
+
+  Args:
+      columns (Sequence[str]): Ordered column names from the query result.
+      data (Sequence[SqlRow]): Sequence of row mappings.
+
+  Returns:
+      str: Formatted Markdown table string, or `'_No rows returned._'` if empty.
+  """
+  resolved_cols = list(columns) if columns else (list(data[0].keys()) if data else [])
+  if not resolved_cols:
+    return "_No rows returned._"
+  nl = chr(10)
+  escaped_headers = [str(col).replace("|", "\\|") for col in resolved_cols]
+  header_line = "| " + " | ".join(escaped_headers) + " |"
+  separator_line = "| " + " | ".join(["---"] * len(resolved_cols)) + " |"
+  if not data:
+    return f"{header_line}{nl}{separator_line}{nl}{nl}_No rows returned._"
+  row_lines: list[str] = []
+  for row in data:
+    cells = [
+      str(row.get(col, "") if row.get(col) is not None else "").replace("|", "\\|").replace(nl, " ")
+      for col in resolved_cols
+    ]
+    row_lines.append("| " + " | ".join(cells) + " |")
+  return nl.join([header_line, separator_line, *row_lines])
 
 
 class ChatService:
@@ -174,11 +311,15 @@ class ChatService:
     Executes raw user SQL directly against read-only DuckDB when the `'SQL'` (`SQL [no model]`)
     processor is selected.
 
+    Does not wrap the SQL query in a ` ```sql ` code fence so that the UI does not redundantly
+    display a `'Suggested Query'` block for a query the user authored directly; instead renders
+    the execution summary and a Markdown table of the results.
+
     Args:
         messages_payload (list[dict[str, str]]): Conversation messages ending with the user's SQL query.
 
     Returns:
-        ArenaResponse: Direct SQL candidate containing the formatted SQL block and execution summary.
+        ArenaResponse: Direct SQL candidate containing the execution summary and Markdown result table.
     """
     start = time.perf_counter()
     user_msgs = [m.get("content", "") for m in messages_payload if m.get("role") == "user"]
@@ -191,20 +332,54 @@ class ChatService:
       return ArenaResponse(
         provider_name="SQL [no model]",
         model_identifier="SQL",
-        content=f"```sql{nl}{extracted}{nl}```{nl}{nl}**DuckDB Validation Error:** {preview.error}",
+        content=f"**DuckDB Validation Error:** {preview.error}",
         latency_ms=duration_ms,
         error=None,
       )
+    md_table = _format_markdown_table(preview.columns, preview.data)
     return ArenaResponse(
       provider_name="SQL [no model]",
       model_identifier="SQL",
       content=(
-        f"```sql{nl}{extracted}{nl}```{nl}{nl}"
         f"Executed directly on read-only DuckDB ({preview.row_count} rows returned in {preview.execution_time_ms}ms)."
+        f"{nl}{nl}{md_table}"
       ),
       latency_ms=duration_ms,
       error=None,
     )
+
+  def _build_model_identity_arena_responses(
+    self,
+    llm_targets: list[str] | None,
+    arena_client: LLMArenaClient,
+  ) -> list[ArenaResponse]:
+    """
+    Constructs SQL-only `ArenaResponse` items answering a model-identity query for each target model.
+
+    Args:
+        llm_targets (list[str] | None): Explicitly requested LLM identifiers, if any.
+        arena_client (LLMArenaClient): Arena client containing active swarm combatants.
+
+    Returns:
+        list[ArenaResponse]: SQL-only candidate responses identifying each active model.
+    """
+    resolved_ids = (
+      [mid.strip() or "unknown" for mid in llm_targets]
+      if llm_targets
+      else [_resolve_combatant_identifier(c) for c in arena_client.swarm]
+    )
+    if not resolved_ids:
+      resolved_ids = ["unknown"]
+    return [
+      ArenaResponse(
+        provider_name=mid,
+        model_identifier=mid,
+        content=build_model_identity_sql_block(mid, mid),
+        latency_ms=1,
+        error=None,
+      )
+      for mid in resolved_ids
+    ]
 
   async def _collect_arena_responses(
     self,
@@ -242,30 +417,23 @@ class ChatService:
         if not llm_targets:
           return responses
 
-      arena_res = await arena_client.generate_arena_competition(
+      user_msgs = [m.get("content", "") for m in messages_payload if m.get("role") == "user"]
+      latest_user_msg = (user_msgs[-1] if user_msgs else "").strip()
+      if is_model_identity_query(latest_user_msg):
+        responses.extend(self._build_model_identity_arena_responses(llm_targets, arena_client))
+        return responses
+
+      target_count = len(target_models) if (target_models and len(target_models) < 3) else 3
+      responses = await pad_arena_responses(
+        arena_client=arena_client,
         messages=messages_payload,
+        target_count=target_count,
         temperature=0.7,
         max_tokens=1000,
         target_model_ids=llm_targets,
         admin_settings=admin_settings,
+        initial_responses=responses,
       )
-      responses.extend(arena_res)
-
-      target_count = len(target_models) if (target_models and len(target_models) < 3) else 3
-      attempts = 0
-      any_success = any(r.error is None for r in responses)
-
-      while len(responses) < target_count and attempts < 3 and any_success:
-        attempts += 1
-        more = await arena_client.generate_arena_competition(
-          messages=messages_payload,
-          temperature=0.7 + (attempts * 0.1),
-          max_tokens=1000,
-          target_model_ids=llm_targets,
-          admin_settings=admin_settings,
-        )
-        if more:
-          responses.extend(more)
 
       if not responses:
         return [ArenaResponse("System", "error", "I apologize, no models responded.", 0, "All providers failed")]
@@ -285,6 +453,9 @@ class ChatService:
         responses (list[ArenaResponse]): Arena responses to persist.
     """
     used_names: set[str] = set()
+    auto_select_single_sql = (
+      len(responses) == 1 and responses[0].model_identifier.strip().lower() in _DIRECT_SQL_MODEL_IDS
+    )
     for idx, res in enumerate(responses):
       content_to_save = res.content
       if not content_to_save and res.error:
@@ -293,7 +464,8 @@ class ChatService:
       elif not content_to_save:
         content_to_save = "(Empty Response)"
 
-      sql_code = extract_and_validate_chat_sql(content_to_save)
+      is_direct_sql = res.model_identifier.strip().lower() in _DIRECT_SQL_MODEL_IDS
+      sql_code = None if is_direct_sql else extract_and_validate_chat_sql(content_to_save)
       sql_hash = sql_fingerprint(sql_code) if sql_code else None
 
       tag = f"{res.provider_name} {idx + 1}" if res.provider_name in used_names else res.provider_name
@@ -306,7 +478,7 @@ class ChatService:
           content=content_to_save,
           sql_snippet=sql_code,
           sql_hash=sql_hash,
-          is_selected=False,
+          is_selected=auto_select_single_sql,
         )
       )
 
@@ -353,11 +525,16 @@ class ChatService:
     admin_settings = await admin_settings_fn(db)
     responses = await self._collect_arena_responses(messages_payload, target_models, admin_settings, arena_client)
 
+    is_single_direct_sql = len(responses) == 1 and responses[0].model_identifier.strip().lower() in _DIRECT_SQL_MODEL_IDS
+    initial_content = (
+      responses[0].content if is_single_direct_sql else "Multiple options generated. Please select the best response."
+    )
+
     now = datetime.now(UTC)
     assistant_msg = Message(
       conversation_id=conversation_id,
       role="assistant",
-      content="Multiple options generated. Please select the best response.",
+      content=initial_content,
       sql_snippet=None,
       created_at=now,
     )
@@ -439,28 +616,6 @@ class ChatService:
     result = await db.execute(stmt)
     return Ok(list(result.scalars().all()))
 
-  async def list_conversations(
-    self,
-    current_user: User,
-    db: AsyncSession,
-    limit: int = 50,
-    offset: int = 0,
-  ) -> list[Conversation]:
-    """
-    Lists recent conversations owned by `current_user`.
-
-    Args:
-        current_user (User): Authenticated user.
-        db (AsyncSession): Active database session.
-        limit (int): Maximum number of conversations to return.
-        offset (int): Pagination offset.
-
-    Returns:
-        list[Conversation]: Ordered list of user conversations.
-    """
-    res = await self.list_conversations_result(current_user=current_user, db=db, limit=limit, offset=offset)
-    return res.unwrap_or([])
-
   async def create_conversation_result(
     self,
     payload: ConversationCreate,
@@ -511,38 +666,12 @@ class ChatService:
     reloaded = result.scalars().first()
     return Ok(reloaded if reloaded is not None else conv)
 
-  async def create_conversation(
-    self,
-    payload: ConversationCreate,
-    current_user: User,
-    db: AsyncSession,
-    reply_fn: Callable[..., Awaitable[Message]] | None = None,
-  ) -> Conversation:
-    """
-    Creates a new conversation and optionally seeds the initial user message and assistant reply.
-
-    Args:
-        payload (ConversationCreate): Creation payload (`title`, `message`, `target_models`).
-        current_user (User): Authenticated owner.
-        db (AsyncSession): Active database session.
-        reply_fn (Callable[..., Awaitable[Message]] | None): Optional reply generator override.
-
-    Returns:
-        Conversation: Newly created conversation with loaded `messages` and `candidates`.
-    """
-    res = await self.create_conversation_result(
-      payload=payload,
-      current_user=current_user,
-      db=db,
-      reply_fn=reply_fn,
-    )
-    return res.unwrap_or(Conversation(user_id=current_user.id, title=payload.title or "New Chat"))
-
   async def get_owned_conversation_result(
     self,
     conversation_id: UUID,
     current_user: User,
     db: AsyncSession,
+    accept_language: str | None = None,
   ) -> AppResult[Conversation]:
     """
     Fetches a conversation owned by `current_user`, returning an explicit `AppResult`.
@@ -551,6 +680,7 @@ class ChatService:
         conversation_id (UUID): Target conversation UUID.
         current_user (User): Authenticated user.
         db (AsyncSession): Active database session.
+        accept_language (str | None): Optional HTTP `Accept-Language` header for localized error messages.
 
     Returns:
         AppResult[Conversation]: `Ok(Conversation)` if found and owned, else `Err(AppError)`.
@@ -560,7 +690,8 @@ class ChatService:
     )
     conv = result.scalars().first()
     if not conv:
-      return Err(AppError(code=ErrorCode.CONVERSATION_NOT_FOUND, message="Conversation not found", status_code=404))
+      msg = get_translated_message(accept_language, "error.conversation_not_found", "Conversation not found")
+      return Err(AppError(code=ErrorCode.CONVERSATION_NOT_FOUND, message=msg, status_code=404))
     return Ok(conv)
 
   async def update_conversation_result(
@@ -724,11 +855,13 @@ class ChatService:
     )
     msg_obj = (await db.execute(msg_stmt)).scalars().first()
     if msg_obj is None:
-      return Err(AppError(code=ErrorCode.MESSAGE_NOT_FOUND, message="Message not found", status_code=404))
+      msg = get_translated_message(None, "error.message_not_found", "Message not found")
+      return Err(AppError(code=ErrorCode.MESSAGE_NOT_FOUND, message=msg, status_code=404))
 
     target_candidate = next((c for c in msg_obj.candidates if c.id == payload.candidate_id), None)
     if target_candidate is None:
-      return Err(AppError(code=ErrorCode.CANDIDATE_NOT_FOUND, message="Candidate not found", status_code=404))
+      cand_msg = get_translated_message(None, "error.candidate_not_found", "Candidate not found")
+      return Err(AppError(code=ErrorCode.CANDIDATE_NOT_FOUND, message=cand_msg, status_code=404))
 
     winning_content = target_candidate.content or ""
     winning_sql = target_candidate.sql_snippet or None
@@ -819,10 +952,24 @@ class ChatService:
     yield f"data: {start_payload}{nl}{nl}"
 
     accumulated: list[str] = []
+    user_msgs = [m.get("content", "") for m in messages_payload if m.get("role") == "user"]
+    latest_user_msg = (user_msgs[-1] if user_msgs else "").strip()
     try:
       if model_id and model_id.strip().lower() in _DIRECT_SQL_MODEL_IDS:
         direct_res = await self._build_direct_sql_arena_response(messages_payload)
         for word in direct_res.content.split(" "):
+          token_str = word + " "
+          accumulated.append(token_str)
+          payload = json.dumps({"event": "token", "token": token_str})
+          yield f"data: {payload}{nl}{nl}"
+      elif is_model_identity_query(latest_user_msg):
+        active_id = (
+          model_id.strip()
+          if model_id and model_id.strip()
+          else (_resolve_combatant_identifier(arena_client.swarm[0]) if arena_client.swarm else "unknown")
+        )
+        identity_sql = build_model_identity_sql_block(active_id, active_id)
+        for word in identity_sql.split(" "):
           token_str = word + " "
           accumulated.append(token_str)
           payload = json.dumps({"event": "token", "token": token_str})

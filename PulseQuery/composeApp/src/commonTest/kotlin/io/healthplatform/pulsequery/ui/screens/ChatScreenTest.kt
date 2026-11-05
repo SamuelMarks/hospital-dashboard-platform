@@ -248,6 +248,47 @@ class ChatScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
             )
         )
 
+        val directSqlMsg = MessageResponse(
+            id = "sql-msg",
+            conversationId = "c-1",
+            role = "assistant",
+            content = "Executed directly on read-only DuckDB.\n| col1 | col2 |\n| --- | --- |\n| 1 | 2 |",
+            sqlSnippet = "SELECT 1, 2",
+            createdAt = kotlin.time.Instant.parse("2026-09-01T00:00:02Z"),
+            candidates = listOf(
+                MessageCandidateResponse(
+                    id = "c-sql",
+                    modelName = "SQL [no model]",
+                    content = "Executed directly",
+                    sqlSnippet = "SELECT 1, 2",
+                    isSelected = true
+                )
+            )
+        )
+        val multiWithDirectSqlMsg = MessageResponse(
+            id = "multi-sql-msg",
+            conversationId = "c-1",
+            role = "assistant",
+            content = "Multiple options generated.",
+            createdAt = kotlin.time.Instant.parse("2026-09-01T00:00:03Z"),
+            candidates = listOf(
+                MessageCandidateResponse(
+                    id = "c-sql-2",
+                    modelName = "SQL [no model]",
+                    content = "Direct SQL result",
+                    sqlSnippet = "SELECT 99",
+                    isSelected = false
+                ),
+                MessageCandidateResponse(
+                    id = "c-llm-2",
+                    modelName = "GPT-4o",
+                    content = "LLM result",
+                    sqlSnippet = "SELECT 100",
+                    isSelected = false
+                )
+            )
+        )
+
         setContent {
             MaterialTheme {
                 androidx.compose.foundation.layout.Column {
@@ -265,6 +306,8 @@ class ChatScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
                         onStageToCart = null,
                         onExecuteSql = null
                     )
+                    ChatBubble(message = directSqlMsg, onVoteCandidate = null, onStageToCart = null, onExecuteSql = null)
+                    ChatBubble(message = multiWithDirectSqlMsg, onVoteCandidate = null, onStageToCart = null, onExecuteSql = null)
                     ChatStreamingPreviewSection(streamingText = "SELECT * FROM live_stream")
                 }
             }
@@ -275,8 +318,10 @@ class ChatScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         onNodeWithText("DuckDB Error: Binder Error").assertExists()
         onNodeWithText("SELECT * FROM live_stream").assertExists()
         onNodeWithText("1 Model Variations").performSemanticsAction(SemanticsActions.OnClick)
+        onNodeWithText("2 Model Variations").performSemanticsAction(SemanticsActions.OnClick)
         waitForIdle()
         onNodeWithText("Claude").assertExists()
+        onNodeWithText("SQL [no model]").assertExists()
     }
 
     /**
@@ -305,6 +350,43 @@ class ChatScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
 
         assertEquals("Pediatrics Census", resolveConversationRowTitle(titledConv, "Untitled"))
         assertEquals("Untitled", resolveConversationRowTitle(untitledConv, "Untitled"))
+
+        assertTrue(isDirectSqlModelName("SQL"))
+        assertTrue(isDirectSqlModelName("SQL [no model]"))
+        assertTrue(isDirectSqlModelName("SQL [no model] 1"))
+        kotlin.test.assertFalse(isDirectSqlModelName("MedGemma"))
+
+        val msgNoCands = MessageResponse(
+            id = "m0",
+            conversationId = "c1",
+            role = "assistant",
+            content = "ok",
+            createdAt = kotlin.time.Instant.parse("2026-09-01T00:00:00Z"),
+            candidates = null
+        )
+        kotlin.test.assertFalse(isDirectSqlMessageResponse(msgNoCands))
+        val msgSingleSql = msgNoCands.copy(
+            candidates = listOf(
+                MessageCandidateResponse(
+                    id = "c1",
+                    modelName = "SQL [no model]",
+                    content = "ok",
+                    isSelected = true
+                )
+            )
+        )
+        assertTrue(isDirectSqlMessageResponse(msgSingleSql))
+        val msgSingleLlm = msgNoCands.copy(
+            candidates = listOf(
+                MessageCandidateResponse(
+                    id = "c1",
+                    modelName = "Claude",
+                    content = "ok",
+                    isSelected = true
+                )
+            )
+        )
+        kotlin.test.assertFalse(isDirectSqlMessageResponse(msgSingleLlm))
     }
 
     /**

@@ -456,27 +456,62 @@ describe('ConversationComponent', () => {
   });
 
   describe('hasSqlCandidates', () => {
-    it('should return true if any candidate has sql_snippet', () => {
+    it('should return true if any candidate has sql_snippet and is not direct SQL', () => {
       expect(
         component.hasSqlCandidates(
           createMockMessage({
             candidates: [
               createMockCandidate({ sql_snippet: '' }),
-              createMockCandidate({ sql_snippet: 'select' }),
+              createMockCandidate({ sql_snippet: 'select', model_name: 'MedGemma' }),
             ],
           }),
         ),
       ).toBe(true);
     });
-    it('should return false if none have sql_snippet or no candidates', () => {
+    it('should return false if none have sql_snippet, only direct SQL candidates exist, or no candidates', () => {
       expect(
         component.hasSqlCandidates(
           createMockMessage({ candidates: [createMockCandidate({ sql_snippet: '' })] }),
         ),
       ).toBe(false);
+      expect(
+        component.hasSqlCandidates(
+          createMockMessage({
+            candidates: [
+              createMockCandidate({ sql_snippet: 'SELECT 1', model_name: 'SQL [no model]' }),
+            ],
+          }),
+        ),
+      ).toBe(false);
       const msgNoCands = createMockMessage();
       delete msgNoCands.candidates;
       expect(component.hasSqlCandidates(msgNoCands)).toBe(false);
+    });
+    it('should identify direct SQL candidates and messages accurately', () => {
+      expect(component.isDirectSqlCandidate(createMockCandidate({ model_name: 'SQL' }))).toBe(true);
+      expect(
+        component.isDirectSqlCandidate(createMockCandidate({ model_name: 'SQL [no model]' })),
+      ).toBe(true);
+      expect(component.isDirectSqlCandidate(createMockCandidate({ model_name: '' }))).toBe(false);
+      expect(component.isDirectSqlCandidate(createMockCandidate({ model_name: 'MedGemma' }))).toBe(
+        false,
+      );
+
+      expect(
+        component.isDirectSqlMessage(
+          createMockMessage({
+            candidates: [createMockCandidate({ model_name: 'SQL [no model]' })],
+          }),
+        ),
+      ).toBe(true);
+      expect(
+        component.isDirectSqlMessage(
+          createMockMessage({
+            candidates: [createMockCandidate({ model_name: 'MedGemma' })],
+          }),
+        ),
+      ).toBe(false);
+      expect(component.isDirectSqlMessage(createMockMessage({ candidates: [] }))).toBe(false);
     });
   });
 

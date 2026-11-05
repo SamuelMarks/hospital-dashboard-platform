@@ -668,6 +668,29 @@ describe('WidgetComponent', () => {
         allow_natural_text: true,
       },
     });
+    dataMapSig.set({
+      w1: {
+        columns: ['a'],
+        data: [{ a: 1 }],
+        processor_used: 'ollama:llama3',
+      },
+    });
+    fixture.detectChanges();
+    expect(component.processorUsed()).toBe('ollama:llama3');
+    expect(component.generatedSql()).toBeNull();
+
+    dataMapSig.set({
+      w1: {
+        columns: ['a'],
+        data: [{ a: 1 }],
+        generated_sql: 'SELECT 1 AS a',
+        processor_used: 'SQL',
+      },
+    });
+    fixture.detectChanges();
+    expect(component.processorUsed()).toBe('SQL');
+    expect(component.generatedSql()).toBeNull();
+
     dataMapSig.set({ w1: { columns: ['a'], data: [{ a: 1 }] } });
     fixture.detectChanges();
     expect(component.configuredProcessor()).toBe('SQL');

@@ -51,11 +51,11 @@ internal fun saveJsFileToDeviceWithFactory(
     elementFactory: () -> org.w3c.dom.Element = { document.createElement("a") }
 ): Result<String> {
     return runCatchingPulse {
+        val anchor = elementFactory() as? HTMLAnchorElement
+            ?: return Result.failure(PulseQueryError.Storage.WriteFailure(filename, "DOM Blob"))
         val int8Array = Int8Array(bytes.toTypedArray())
         val blob = Blob(arrayOf(int8Array), BlobPropertyBag(type = mimeType))
         val objectUrl = URL.createObjectURL(blob)
-        val anchor = elementFactory() as? HTMLAnchorElement
-            ?: error("Failed to create HTMLAnchorElement")
         anchor.href = objectUrl
         anchor.download = filename
         val body = document.body

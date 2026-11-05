@@ -46,6 +46,15 @@ class AuthViewModelTest {
         }
     }
 
+    private suspend fun awaitIdle(vm: AuthViewModel) {
+        var attempts = 0
+        while (vm.state.value.isLoading && attempts < 200) {
+            kotlinx.coroutines.delay(10)
+            attempts++
+        }
+        kotlinx.coroutines.delay(10)
+    }
+
     private val userJson = """
         {
             "id": "u-1",
@@ -116,12 +125,17 @@ class AuthViewModelTest {
 
     @Test
     fun testLoginValidationSuccessAndProfileFailure() = kotlinx.coroutines.runBlocking {
+        var registerStatus = HttpStatusCode.Created
         var meStatus = HttpStatusCode.OK
         val engine = MockEngine { req ->
             when {
                 req.url.encodedPath.endsWith("/register") -> respond(
-                    content = userJson,
-                    status = HttpStatusCode.Created,
+                    content = if (registerStatus == HttpStatusCode.Created) {
+                        userJson
+                    } else {
+                        """{"detail": "Email already registered"}"""
+                    },
+                    status = registerStatus,
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
                 req.url.encodedPath.endsWith("/login") -> respond(
@@ -151,7 +165,7 @@ class AuthViewModelTest {
         vm.updatePassword("password123")
         var loggedIn = false
         vm.login("Empty", "ProfileErr", "AuthErr") { loggedIn = true }
-        kotlinx.coroutines.delay(50)
+        awaitIdle(vm)
         assertTrue(loggedIn)
         assertEquals("jwt-123", AppContainer.currentToken)
         assertEquals("doc@stanford.edu", AppContainer.currentUser?.email)
@@ -160,14 +174,21 @@ class AuthViewModelTest {
         vm.toggleRegisterMode()
         var registeredAndLoggedIn = false
         vm.login("Empty", "ProfileErr", "AuthErr") { registeredAndLoggedIn = true }
-        kotlinx.coroutines.delay(50)
+        awaitIdle(vm)
         assertTrue(registeredAndLoggedIn)
+
+        // Inline register HTTP 400 failure (!registerResponse.success -> asResult().onFailure)
+        registerStatus = HttpStatusCode.BadRequest
+        vm.login("Empty", "ProfileErr", "AuthErr") {}
+        awaitIdle(vm)
+        assertEquals("Registration failed: Email already registered", vm.state.value.errorMessage)
+        registerStatus = HttpStatusCode.Created
 
         // Profile fetch failure (!meResponse.success)
         vm.toggleRegisterMode()
         meStatus = HttpStatusCode.InternalServerError
         vm.login("Empty", "ProfileErr", "AuthErr") {}
-        kotlinx.coroutines.delay(50)
+        awaitIdle(vm)
         assertEquals("ProfileErr", vm.state.value.errorMessage)
     }
 

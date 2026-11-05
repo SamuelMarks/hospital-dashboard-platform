@@ -277,20 +277,24 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
         val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
         val vm = io.healthplatform.pulsequery.ui.screens.editor.EditorViewModel(scope = scope)
         val widgetRes = vm.saveQuery(
-            destination = SaveQueryDestination.DASHBOARD_WIDGET,
-            title = "Census Widget",
-            sql = "SELECT 1",
-            dashboardId = "1",
-            widgetSuccessMessage = "Custom Widget Saved"
+            io.healthplatform.pulsequery.ui.screens.editor.SaveQueryCommand(
+                destination = SaveQueryDestination.DASHBOARD_WIDGET,
+                title = "Census Widget",
+                sql = "SELECT 1",
+                dashboardId = "1",
+                widgetSuccessMessage = "Custom Widget Saved"
+            )
         )
         assertEquals("Custom Widget Saved", widgetRes.getOrNull())
 
         val tplRes = vm.saveQuery(
-            destination = SaveQueryDestination.TEMPLATE,
-            title = "Census Template",
-            sql = "SELECT 1",
-            dashboardId = null,
-            templateSuccessMessage = "Custom Template Saved"
+            io.healthplatform.pulsequery.ui.screens.editor.SaveQueryCommand(
+                destination = SaveQueryDestination.TEMPLATE,
+                title = "Census Template",
+                sql = "SELECT 1",
+                dashboardId = null,
+                templateSuccessMessage = "Custom Template Saved"
+            )
         )
         assertEquals("Custom Template Saved", tplRes.getOrNull())
     }

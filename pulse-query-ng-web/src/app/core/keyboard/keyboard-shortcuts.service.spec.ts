@@ -174,17 +174,80 @@ describe('KeyboardShortcutsService', () => {
     document.body.removeChild(input);
   });
 
-  it('should show help when ? pressed in an input without modifiers', () => {
+  it('should NOT show help when ? is pressed in an input, textarea, CodeMirror editor, or ad-hoc query interface', () => {
     const input = document.createElement('input');
     document.body.appendChild(input);
     input.focus();
 
-    const event = new KeyboardEvent('keydown', { key: '?', bubbles: true });
+    const event = new KeyboardEvent('keydown', { key: '?', shiftKey: true, bubbles: true });
     Object.defineProperty(event, 'target', { value: input, enumerable: true });
     document.dispatchEvent(event);
 
-    expect(service.isHelpVisible()).toBe(true);
+    expect(service.isHelpVisible()).toBe(false);
     document.body.removeChild(input);
+
+    // Inside CodeMirror .cm-editor child span
+    const cmEditor = document.createElement('div');
+    cmEditor.className = 'cm-editor';
+    const cmSpan = document.createElement('span');
+    cmEditor.appendChild(cmSpan);
+    document.body.appendChild(cmEditor);
+
+    const cmEvent = new KeyboardEvent('keydown', { key: '?', shiftKey: true, bubbles: true });
+    Object.defineProperty(cmEvent, 'target', { value: cmSpan, enumerable: true });
+    document.dispatchEvent(cmEvent);
+    expect(service.isHelpVisible()).toBe(false);
+    document.body.removeChild(cmEditor);
+
+    // Inside app-ask-data adhoc query container
+    const askDataEl = document.createElement('app-ask-data');
+    const innerDiv = document.createElement('div');
+    askDataEl.appendChild(innerDiv);
+    document.body.appendChild(askDataEl);
+
+    const adhocShiftEvent = new KeyboardEvent('keydown', {
+      key: '?',
+      shiftKey: true,
+      bubbles: true,
+    });
+    Object.defineProperty(adhocShiftEvent, 'target', { value: innerDiv, enumerable: true });
+    document.dispatchEvent(adhocShiftEvent);
+    expect(service.isHelpVisible()).toBe(false);
+
+    // Command-modified shortcut (mod+/) still works if not typing in an input
+    const modSlashEvent = new KeyboardEvent('keydown', {
+      key: '/',
+      ctrlKey: true,
+      bubbles: true,
+    });
+    Object.defineProperty(modSlashEvent, 'target', { value: innerDiv, enumerable: true });
+    document.dispatchEvent(modSlashEvent);
+    expect(service.isHelpVisible()).toBe(true);
+    service.hideHelp();
+
+    document.body.removeChild(askDataEl);
+  });
+
+  it('should suppress unmodified shortcuts inside app-chat-layout and handle null event target', () => {
+    const chatLayoutEl = document.createElement('app-chat-layout');
+    const chatChild = document.createElement('div');
+    chatLayoutEl.appendChild(chatChild);
+    document.body.appendChild(chatLayoutEl);
+
+    const chatEvent = new KeyboardEvent('keydown', { key: '?', shiftKey: true, bubbles: true });
+    Object.defineProperty(chatEvent, 'target', { value: chatChild, enumerable: true });
+    document.dispatchEvent(chatEvent);
+    expect(service.isHelpVisible()).toBe(false);
+    document.body.removeChild(chatLayoutEl);
+
+    const nullTargetEvent = new KeyboardEvent('keydown', { key: '?' });
+    Object.defineProperty(nullTargetEvent, 'target', { value: null, enumerable: true });
+    document.dispatchEvent(nullTargetEvent);
+    expect(service.isHelpVisible()).toBe(true);
+    // Calling showHelp again while already visible should be a no-op
+    service.showHelp();
+    expect(service.isHelpVisible()).toBe(true);
+    service.hideHelp();
   });
 
   it('should NOT show help when ? pressed in an input with modifiers', () => {

@@ -316,15 +316,20 @@ async def test_stream_conversation_events_emits_error_frame_on_exception(
   Verifies that `chat_service.stream_conversation_events` emits a structured `error` SSE frame
   and does not persist a corrupted assistant message if `arena_client.stream_tokens` raises.
   """
+  from app.core.result import Ok
   from app.schemas.chat import ConversationCreate
   from app.services.chat_service import chat_service
 
-  conv = await chat_service.create_conversation(
+  conv_res = await chat_service.create_conversation_result(
     ConversationCreate(title="Stream Error Test"),
     mock_user_auth,
     db_session,
   )
-  convs = await chat_service.list_conversations(mock_user_auth, db_session)
+  assert isinstance(conv_res, Ok)
+  conv = conv_res.value
+  convs_res = await chat_service.list_conversations_result(mock_user_auth, db_session)
+  assert isinstance(convs_res, Ok)
+  convs = convs_res.value
   assert any(c.id == conv.id for c in convs)
 
   class FailingArenaClient(LLMArenaClient):

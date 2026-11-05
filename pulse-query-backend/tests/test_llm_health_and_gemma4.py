@@ -846,6 +846,13 @@ async def test_ai_router_health_and_verify_endpoints_and_direct_sql_chat(
       assert len(res_direct_only) == 1
       assert res_direct_only[0].model_identifier == "SQL"
       assert "Executed directly on read-only DuckDB" in res_direct_only[0].content
+      assert "| cnt |" in res_direct_only[0].content
+
+      from app.services.chat_service import _format_markdown_table
+
+      assert _format_markdown_table([], []) == "_No rows returned._"
+      assert "_No rows returned._" in _format_markdown_table(["c1"], [])
+      assert "| k |" in _format_markdown_table([], [{"k": "v"}])
 
       # Direct SQL + LLM model
       mock_arena = MagicMock(spec=LLMArenaClient)
@@ -887,5 +894,93 @@ async def test_ai_router_health_and_verify_endpoints_and_direct_sql_chat(
         [{"role": "user", "content": "SELECT * FROM missing_tbl"}]
       )
       assert "DuckDB Validation Error" in res_direct_err.content
+
+      from app.services.chat_service import (
+        build_model_identity_sql_block,
+        extract_and_validate_chat_sql,
+        is_model_identity_query,
+      )
+
+      assert is_model_identity_query(None) is False
+      assert is_model_identity_query("What is my model?") is True
+      assert is_model_identity_query("What model are you") is True
+      assert is_model_identity_query("Count patients in ICU") is False
+      assert "SELECT 'gemma:2b' AS model;" in build_model_identity_sql_block("ollama:gemma:2b", "gemma:2b (ollama)")
+      assert "SELECT 'custom' AS model;" in build_model_identity_sql_block("custom")
+
+      # Raw SQL + SQL comments without markdown code fences
+      raw_comment_sql = f"-- Query active model{chr(10)}SELECT 'gemma:2b' AS model;"
+      assert extract_and_validate_chat_sql(raw_comment_sql) == raw_comment_sql
+      assert extract_and_validate_chat_sql("SELECT FROM WHERE (((") is None
+
+      # Model identity query in _collect_arena_responses (with target_models, swarm combatants, and empty swarm fallback)
+      empty_swarm_arena = MagicMock(spec=LLMArenaClient)
+      empty_swarm_arena.swarm = []
+      res_identity_target = await svc_err._collect_arena_responses(
+        messages_payload=[{"role": "user", "content": "What is my model"}],
+        target_models=["ollama:gemma:2b"],
+        admin_settings=None,
+        arena_client=empty_swarm_arena,
+      )
+      assert len(res_identity_target) == 1
+      assert "SELECT 'gemma:2b' AS model;" in res_identity_target[0].content
+
+      res_identity_default = await svc_err._collect_arena_responses(
+        messages_payload=[{"role": "user", "content": "What is my model?"}],
+        target_models=None,
+        admin_settings=None,
+        arena_client=empty_swarm_arena,
+      )
+      assert len(res_identity_default) == 1
+      assert "SELECT 'unknown' AS model;" in res_identity_default[0].content
+
+      non_gemma_swarm_arena = MagicMock(spec=LLMArenaClient)
+      non_gemma_swarm_arena.swarm = [
+        {
+          "client": None,
+          "name": "Phi-4 Mini",
+          "id": "",
+          "model_name": "phi4-mini",
+          "provider": "ollama",
+          "is_local": True,
+        }
+      ]
+      res_identity_swarm = await svc_err._collect_arena_responses(
+        messages_payload=[{"role": "user", "content": "What model are you?"}],
+        target_models=None,
+        admin_settings=None,
+        arena_client=non_gemma_swarm_arena,
+      )
+      assert len(res_identity_swarm) == 1
+      assert "SELECT 'phi4-mini' AS model;" in res_identity_swarm[0].content
+
+      # Stream model identity query via stream_conversation_events
+      conv_id_model = Conversation(id=uuid.uuid4(), user_id=mock_user.id, title="Model Identity Stream")
+      db_session.add(conv_id_model)
+      await db_session.commit()
+      id_events = [
+        ev
+        async for ev in svc_err.stream_conversation_events(
+          conversation_id=conv_id_model.id,
+          messages_payload=[{"role": "user", "content": "What is my model"}],
+          admin_settings=None,
+          db=db_session,
+          model_id="ollama:gemma:2b",
+        )
+      ]
+      assert any("gemma:2b" in e for e in id_events)
+
+      id_events_from_swarm = [
+        ev
+        async for ev in svc_err.stream_conversation_events(
+          conversation_id=conv_id_model.id,
+          messages_payload=[{"role": "user", "content": "What is my model"}],
+          admin_settings=None,
+          db=db_session,
+          model_id=None,
+          arena_client=non_gemma_swarm_arena,
+        )
+      ]
+      assert any("phi4-mini" in e for e in id_events_from_swarm)
   finally:
     app.dependency_overrides.pop(get_current_user, None)

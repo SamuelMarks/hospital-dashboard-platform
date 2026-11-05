@@ -8,6 +8,7 @@ Verifies that 100% of modules, classes, functions, and methods across `src/app/`
 import ast
 from pathlib import Path
 import re
+import xml.etree.ElementTree as ET
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_ROOT.parent
@@ -84,6 +85,8 @@ def _check_kotlin_main_file(kt_file: Path) -> list[str]:
   errors: list[str] = []
   if re.search(r"\brunCatching\s*\{", text):
     errors.append(f"{rel}: raw runCatching found in Main source set; use runCatchingPulse")
+  if ".getOrThrow(" in text or re.search(r"\berror\s*\(", text):
+    errors.append(f"{rel}: forbidden getOrThrow() or error() found in Main source set; use Result")
   lines = text.splitlines()
   for idx, line in enumerate(lines):
     s = line.strip()
@@ -177,3 +180,27 @@ def test_zero_tautological_assertions_across_all_test_suites() -> None:
     if re.search(r"\bassertTrue\(\s*true\s*\)|\bassertFalse\(\s*false\s*\)", kt_test.read_text(encoding="utf-8")):
       violations.append(str(kt_test.relative_to(REPO_ROOT)))
   assert violations == [], f"Tautological test assertions found: {violations}"
+
+
+def test_kotlin_i18n_strings_xml_parity() -> None:
+  """
+  Verifies 100% `<string>` and `<plurals>` key parity across English (`values/strings.xml`),
+  Spanish (`values-es/strings.xml`), and French (`values-fr/strings.xml`) Compose resources.
+  """
+  res_dir = KMP_SRC_DIR / "commonMain" / "composeResources"
+  en_root = ET.parse(res_dir / "values" / "strings.xml").getroot()
+  es_root = ET.parse(res_dir / "values-es" / "strings.xml").getroot()
+  fr_root = ET.parse(res_dir / "values-fr" / "strings.xml").getroot()
+
+  en_strings = {el.attrib["name"] for el in en_root.findall("string")}
+  es_strings = {el.attrib["name"] for el in es_root.findall("string")}
+  fr_strings = {el.attrib["name"] for el in fr_root.findall("string")}
+
+  en_plurals = {el.attrib["name"] for el in en_root.findall("plurals")}
+  es_plurals = {el.attrib["name"] for el in es_root.findall("plurals")}
+  fr_plurals = {el.attrib["name"] for el in fr_root.findall("plurals")}
+
+  assert en_strings == es_strings, f"ES string mismatch: {en_strings ^ es_strings}"
+  assert en_strings == fr_strings, f"FR string mismatch: {en_strings ^ fr_strings}"
+  assert en_plurals == es_plurals, f"ES plurals mismatch: {en_plurals ^ es_plurals}"
+  assert en_plurals == fr_plurals, f"FR plurals mismatch: {en_plurals ^ fr_plurals}"

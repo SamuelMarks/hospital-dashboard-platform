@@ -108,6 +108,21 @@ data class SaveQueryDialogUiState(
 )
 
 /**
+ * Localized validation and confirmation messages used by [SaveQueryDialogStateHolder.submit].
+ *
+ * @property titleRequiredMessage Localized validation error when title is blank.
+ * @property dashboardRequiredMessage Localized validation error when no target dashboard is selected.
+ * @property widgetSuccessMessage Localized confirmation message when saving a dashboard widget.
+ * @property templateSuccessMessage Localized confirmation message when registering a template.
+ */
+data class LocalizedSaveMessages(
+    val titleRequiredMessage: String = "Title is required",
+    val dashboardRequiredMessage: String = "Target dashboard is required",
+    val widgetSuccessMessage: String = UiErrorKey.WIDGET_SAVED_SUCCESS.fallbackMessage,
+    val templateSuccessMessage: String = UiErrorKey.TEMPLATE_REGISTERED_SUCCESS.fallbackMessage
+)
+
+/**
  * State holder managing dashboard loading, form validation, and persistence for [SaveQueryDialog].
  *
  * @property sql Raw SQL query string to persist.
@@ -208,42 +223,37 @@ class SaveQueryDialogStateHolder(
     /**
      * Validates form inputs and submits the save request via [editorViewModel].
      *
-     * @param titleRequiredMessage Localized validation error when title is blank.
-     * @param dashboardRequiredMessage Localized validation error when no target dashboard is selected.
-     * @param widgetSuccessMessage Localized confirmation message when saving a dashboard widget.
-     * @param templateSuccessMessage Localized confirmation message when registering a template.
+     * @param messages Localized validation and confirmation strings.
      * @param onSaved Callback invoked with the confirmation message when saving succeeds.
      */
-    @Suppress("LongParameterList")
     fun submit(
-        titleRequiredMessage: String = "Title is required",
-        dashboardRequiredMessage: String = "Target dashboard is required",
-        widgetSuccessMessage: String = UiErrorKey.WIDGET_SAVED_SUCCESS.fallbackMessage,
-        templateSuccessMessage: String = UiErrorKey.TEMPLATE_REGISTERED_SUCCESS.fallbackMessage,
+        messages: LocalizedSaveMessages = LocalizedSaveMessages(),
         onSaved: (String) -> Unit
     ) {
         val current = _state.value
         if (current.title.isBlank()) {
-            _state.update { it.copy(error = titleRequiredMessage) }
+            _state.update { it.copy(error = messages.titleRequiredMessage) }
             return
         }
         if (current.destination == SaveQueryDestination.DASHBOARD_WIDGET && current.selectedDashboardId == null) {
-            _state.update { it.copy(error = dashboardRequiredMessage) }
+            _state.update { it.copy(error = messages.dashboardRequiredMessage) }
             return
         }
 
         scope.launch {
             _state.update { it.copy(isSaving = true, error = null) }
             editorViewModel.saveQuery(
-                destination = current.destination,
-                title = current.title,
-                sql = sql,
-                dashboardId = current.selectedDashboardId,
-                visualization = current.visualization,
-                category = current.category,
-                description = current.description,
-                widgetSuccessMessage = widgetSuccessMessage,
-                templateSuccessMessage = templateSuccessMessage
+                SaveQueryCommand(
+                    destination = current.destination,
+                    title = current.title,
+                    sql = sql,
+                    dashboardId = current.selectedDashboardId,
+                    visualization = current.visualization,
+                    category = current.category,
+                    description = current.description,
+                    widgetSuccessMessage = messages.widgetSuccessMessage,
+                    templateSuccessMessage = messages.templateSuccessMessage
+                )
             ).fold(
                 onSuccess = { msg ->
                     _state.update { it.copy(isSaving = false, error = null) }
@@ -476,10 +486,12 @@ fun SaveQueryDialog(
                 enabled = !state.isSaving,
                 onClick = {
                     holder.submit(
-                        titleRequiredMessage = titleRequiredMsg,
-                        dashboardRequiredMessage = dashboardRequiredMsg,
-                        widgetSuccessMessage = widgetSuccessMsg,
-                        templateSuccessMessage = templateSuccessMsg,
+                        messages = LocalizedSaveMessages(
+                            titleRequiredMessage = titleRequiredMsg,
+                            dashboardRequiredMessage = dashboardRequiredMsg,
+                            widgetSuccessMessage = widgetSuccessMsg,
+                            templateSuccessMessage = templateSuccessMsg
+                        ),
                         onSaved = onSaved
                     )
                 }

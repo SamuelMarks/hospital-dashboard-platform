@@ -10,7 +10,6 @@ import { BASE_PATH } from './api-client';
 
 describe('server app config', () => {
   it('merges server providers with base app config and covers all client routes', () => {
-    expect(config).toBeTruthy();
     expect(Array.isArray(config.providers)).toBe(true);
     expect(config.providers?.length).toBeGreaterThan(appConfig.providers?.length || 0);
 

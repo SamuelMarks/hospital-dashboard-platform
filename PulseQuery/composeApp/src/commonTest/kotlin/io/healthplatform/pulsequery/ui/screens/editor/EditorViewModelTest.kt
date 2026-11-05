@@ -184,21 +184,25 @@ class EditorViewModelTest {
         assertEquals(1, dashRes.getOrThrow().size)
 
         val saveWidgetRes = vmDefault.saveQuery(
-            destination = SaveQueryDestination.DASHBOARD_WIDGET,
-            title = "Saved Widget",
-            sql = "SELECT 1",
-            dashboardId = "d1"
+            SaveQueryCommand(
+                destination = SaveQueryDestination.DASHBOARD_WIDGET,
+                title = "Saved Widget",
+                sql = "SELECT 1",
+                dashboardId = "d1"
+            )
         )
         assertTrue(saveWidgetRes.isSuccess)
         assertEquals("Widget successfully added to dashboard", saveWidgetRes.getOrThrow())
 
         val saveTemplateRes = vmDefault.saveQuery(
-            destination = SaveQueryDestination.TEMPLATE,
-            title = "Saved Template",
-            sql = "SELECT 1",
-            dashboardId = null,
-            category = "   ",
-            description = "Desc"
+            SaveQueryCommand(
+                destination = SaveQueryDestination.TEMPLATE,
+                title = "Saved Template",
+                sql = "SELECT 1",
+                dashboardId = null,
+                category = "   ",
+                description = "Desc"
+            )
         )
         assertTrue(saveTemplateRes.isSuccess)
         assertEquals("Template successfully registered in library", saveTemplateRes.getOrThrow())
@@ -213,21 +217,25 @@ class EditorViewModelTest {
         )
         assertTrue(vmExplicit.loadAvailableDashboards().isSuccess)
         val saveExplicitWidget = vmExplicit.saveQuery(
-            destination = SaveQueryDestination.DASHBOARD_WIDGET,
-            title = "Explicit Widget",
-            sql = "SELECT 1",
-            dashboardId = "d1",
-            visualization = "bar_chart"
+            SaveQueryCommand(
+                destination = SaveQueryDestination.DASHBOARD_WIDGET,
+                title = "Explicit Widget",
+                sql = "SELECT 1",
+                dashboardId = "d1",
+                visualization = "bar_chart"
+            )
         )
         assertTrue(saveExplicitWidget.isSuccess)
 
         val saveFallbackTemplate = vmExplicit.saveQuery(
-            destination = SaveQueryDestination.DASHBOARD_WIDGET,
-            title = "Fallback Template",
-            sql = "SELECT 1",
-            dashboardId = null,
-            category = "ICU",
-            description = "Desc"
+            SaveQueryCommand(
+                destination = SaveQueryDestination.DASHBOARD_WIDGET,
+                title = "Fallback Template",
+                sql = "SELECT 1",
+                dashboardId = null,
+                category = "ICU",
+                description = "Desc"
+            )
         )
         assertTrue(saveFallbackTemplate.isSuccess)
 
@@ -241,18 +249,22 @@ class EditorViewModelTest {
         assertTrue(vmFail.loadAvailableDashboards().isFailure)
         assertTrue(
             vmFail.saveQuery(
-                destination = SaveQueryDestination.DASHBOARD_WIDGET,
-                title = "W",
-                sql = "SELECT 1",
-                dashboardId = "d1"
+                SaveQueryCommand(
+                    destination = SaveQueryDestination.DASHBOARD_WIDGET,
+                    title = "W",
+                    sql = "SELECT 1",
+                    dashboardId = "d1"
+                )
             ).isFailure
         )
         assertTrue(
             vmFail.saveQuery(
-                destination = SaveQueryDestination.TEMPLATE,
-                title = "T",
-                sql = "SELECT 1",
-                dashboardId = null
+                SaveQueryCommand(
+                    destination = SaveQueryDestination.TEMPLATE,
+                    title = "T",
+                    sql = "SELECT 1",
+                    dashboardId = null
+                )
             ).isFailure
         )
     }

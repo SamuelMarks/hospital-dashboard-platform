@@ -93,8 +93,8 @@ internal fun resolveBaseRenderState(widget: WidgetResponse, obj: JsonObject?): W
             naturalTextPrompt = sqlCfg.naturalTextPrompt
         )
     }
-    val genSql = extractConfigString(obj, "generated_sql")
     val usedProc = extractConfigString(obj, "processor_used")?.let { ProcessorId(it) } ?: sqlCfg.processor
+    val genSql = if (usedProc.isDirectSql) null else extractConfigString(obj, "generated_sql")
     val usedText = extractConfigString(obj, "natural_text") ?: sqlCfg.naturalTextPrompt
     return WidgetRenderState(
         allowNaturalText = sqlCfg.allowNaturalText,

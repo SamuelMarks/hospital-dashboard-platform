@@ -6,10 +6,10 @@
  * - Removed `ReactiveFormsModule`.
  */
 
-import { Component, DestroyRef, inject, OnInit, signal, LOCALE_ID } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, inject, linkedSignal, LOCALE_ID } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { formatDate } from '@angular/common';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute, ParamMap } from '@angular/router';
 import { form } from '@angular/forms/signals';
 
 // Material Imports
@@ -22,7 +22,18 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { provideNativeDateAdapter } from '@angular/material/core';
 
+import { parseIsoDate } from '../core/time.token';
 import { DashboardStore } from './dashboard.store';
+
+/** Filter ribbon state shape synchronized with URL query parameters. */
+export interface FilterRibbonModel {
+  /** Selected hospital department filter or `null` for all departments. */
+  dept: string | null;
+  /** Selected reporting period start date or `null`. */
+  startDate: Date | null;
+  /** Selected reporting period end date or `null`. */
+  endDate: Date | null;
+}
 
 /**
  * Sticky dashboard filter ribbon synchronizing global department and date range filters with URL query parameters.
@@ -100,7 +111,7 @@ import { DashboardStore } from './dashboard.store';
     `,
   ],
 })
-export class FilterRibbonComponent implements OnInit {
+export class FilterRibbonComponent {
   /** Access to dashboard state (global params). */
   public readonly store = inject(DashboardStore);
   /** Angular router used to persist global filter parameters in URL query strings. */
@@ -109,54 +120,35 @@ export class FilterRibbonComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   /** Active application locale identifier. */
   private readonly localeId = inject(LOCALE_ID);
-  /** Angular DestroyRef for declarative RxJS stream teardown. */
-  private readonly destroyRef = inject(DestroyRef);
 
-  /** Form model containing the current filter values. */
-  readonly formModel = signal<{
-    dept: string | null;
-    startDate: Date | null;
-    endDate: Date | null;
-  }>({
-    dept: null,
-    startDate: null,
-    endDate: null,
+  /** Reactive signal tracking the active route query parameter map. */
+  private readonly queryParamMap = toSignal<ParamMap | null>(this.route.queryParamMap, {
+    initialValue: null,
   });
 
-  /** The form control for the ribbon. */
+  /**
+   * Form model derived from `route.queryParamMap` via `linkedSignal()` while allowing
+   * local two-way updates as the user selects dates or departments.
+   */
+  readonly formModel = linkedSignal<ParamMap | null, FilterRibbonModel>({
+    source: this.queryParamMap,
+    computation: (params) => ({
+      dept: params?.get('dept') || null,
+      startDate: parseIsoDate(params?.get('start_date')),
+      endDate: parseIsoDate(params?.get('end_date')),
+    }),
+  });
+
+  /** Signal Form wrapping `formModel`. */
   readonly ribbonForm = form(this.formModel);
-
-  /** Flag to prevent emit loops while syncing from route. */
-  isSyncingFromRoute = false;
-
-  /** Synchronizes global department and date range filter controls from route query parameters. */
-  ngOnInit(): void {
-    // Sync from Route to Form
-    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      const start = params.get('start_date');
-      const end = params.get('end_date');
-      const dept = params.get('dept');
-
-      this.isSyncingFromRoute = true;
-      const val = this.formModel();
-
-      this.formModel.set({
-        ...val,
-        dept: dept || null,
-        startDate: start ? new Date(start) : null,
-        endDate: end ? new Date(end) : null,
-      });
-      this.isSyncingFromRoute = false;
-    });
-  }
 
   /**
    * Handles changes to the department filter.
-   * @param value The selected department.
+   *
+   * @param value - The selected department or `null`.
    */
   onDeptChange(value: string | null): void {
-    this.formModel.update((m) => ({ ...m, dept: value }));
-    if (this.isSyncingFromRoute) return;
+    this.ribbonForm.dept().value.set(value);
     this.updateFilter('dept', value);
   }
 
@@ -166,7 +158,7 @@ export class FilterRibbonComponent implements OnInit {
    * @param date - The newly selected start Date or null.
    */
   onStartDateChange(date: Date | null): void {
-    this.formModel.update((m) => ({ ...m, startDate: date }));
+    this.ribbonForm.startDate().value.set(date);
     this.onDateChange();
   }
 
@@ -176,14 +168,14 @@ export class FilterRibbonComponent implements OnInit {
    * @param date - The newly selected end Date or null.
    */
   onEndDateChange(date: Date | null): void {
-    this.formModel.update((m) => ({ ...m, endDate: date }));
+    this.ribbonForm.endDate().value.set(date);
     this.onDateChange();
   }
 
   /** Navigates with updated `start_date` and `end_date` query parameters when both bounds are populated. */
   onDateChange(): void {
-    const s = this.formModel().startDate;
-    const e = this.formModel().endDate;
+    const s = this.ribbonForm.startDate().value();
+    const e = this.ribbonForm.endDate().value();
 
     if (s && e) {
       const sStr = this.formatDate(s);

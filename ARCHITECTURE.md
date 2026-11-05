@@ -88,7 +88,7 @@ Pulse Query supports multiple target client form factors with clear separation o
 
 | Subsystem            | Tech Stack                                      | Supported Targets                             | Primary Focus                                                                                |
 | -------------------- | ----------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `pulse-query-ng-web` | Angular 19, Material 3, RxJS, Signals           | Desktop & Mobile Web Browsers                 | Primary web enterprise SPA; live collaboration, SSE streaming, full admin & builder suites   |
+| `pulse-query-ng-web` | Angular 22, Material 3, RxJS, Signals           | Desktop & Mobile Web Browsers                 | Primary web enterprise SPA; live collaboration, SSE streaming, full admin & builder suites   |
 | `PulseQuery`         | Kotlin Multiplatform, Compose, Ktor, SQLDelight | Android, iOS, Desktop (JVM), Kotlin/Wasm & JS | Native mobile & desktop clinical dashboards; offline SQLite caching, MVI/MVVM reactive flows |
 
 ---
@@ -123,7 +123,7 @@ On startup, `app.services.data_ingestion` scans the `data/` directory. It saniti
 
 ## 3. Frontend Architecture (`/pulse-query-ng-web`)
 
-The frontend is a modern **Angular 17+** application utilizing **Standalone Components** and **Signals** for state management. It is designed with a **Contract-First** methodology.
+The frontend is a modern **Angular 22** application utilizing **Standalone Components**, **Zoneless Change Detection**, and **Signals** for state management. It is designed with a **Contract-First** methodology.
 
 ### Architecture Highlights
 
@@ -135,7 +135,7 @@ The frontend is a modern **Angular 17+** application utilizing **Standalone Comp
     - **Optimistic UI:** Actions like "Move Widget" or "Delete Dashboard" update the UI signal immediately, reverting only if the API call fails.
 
 3.  **Visualization Layer:**
-    Widgets are rendered via "Dumb Components" (`viz-table`, `viz-chart`, `viz-heatmap`) that accept raw data and configuration inputs. The logic for transforming API responses into visual structures resides in these components involving computed signals.
+    Widgets are rendered via "Dumb Components" (`viz-table`, `viz-chart`, `viz-heatmap`, `viz-markdown`, `viz-metric`, `viz-pie`, `viz-scalar`) that accept raw data and configuration inputs. The logic for transforming API responses into visual structures resides in these components involving computed signals.
 
 ### Dashboard Layout Flow
 
@@ -184,7 +184,7 @@ To prevent layout shift (CLS), the dashboard renders a skeleton structure (`app-
 
 ### B. Analytical Security via AST
 
-The SQL Runner (`pulse-query-backend/app/services/runners/sql.py`) does not rely on Regex for security. It parses user queries into an **Abstract Syntax Tree (AST)** using `sqlglot`. It recursively walks the tree to ensure **only** `SELECT` and `CTE` statements are present, rejecting `DROP`, `DELETE`, or hidden modification commands before they touch the database.
+The SQL Runner (`pulse-query-backend/src/app/services/runners/sql.py`) does not rely on Regex for security. It parses user queries into an **Abstract Syntax Tree (AST)** using `sqlglot`. It recursively walks the tree to ensure **only** `SELECT` and `CTE` statements are present, rejecting `DROP`, `DELETE`, or hidden modification commands before they touch the database.
 
 ### C. The "Marketplace" Seeder
 

@@ -605,6 +605,12 @@ data class ChartDataPoint(
 @Serializable
 value class ProcessorId(val value: String) {
     /**
+     * Whether this processor represents direct DuckDB SQL execution (`"SQL"` / `SQL [no model]`) without an LLM.
+     */
+    val isDirectSql: Boolean
+        get() = value.trim().equals("SQL", ignoreCase = true)
+
+    /**
      * Companion constants for [ProcessorId].
      */
     companion object {

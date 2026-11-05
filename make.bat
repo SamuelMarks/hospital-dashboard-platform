@@ -412,11 +412,8 @@ goto :eof
 call :activate_venv
 call :resolve_python
 if "%VENV_FOUND%"=="" (
-    where uv >nul 2>&1
-    if not errorlevel 1 (
-        call uv venv --python 3.12 pulse-query-backend\.venv
-    ) else (
-        %PYTHON_CMD% -m venv pulse-query-backend\.venv
+    if exist "%LIBSCRIPT_ROOT_DIR%\_lib\_common\python_env.cmd" (
+        call "%LIBSCRIPT_ROOT_DIR%\_lib\_common\python_env.cmd" libscript_python_venv "pulse-query-backend\.venv" "3.12"
     )
     call :activate_venv
     call :resolve_python

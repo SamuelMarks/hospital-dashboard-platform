@@ -298,7 +298,8 @@ class DashboardScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
                         renderState = io.healthplatform.pulsequery.ui.screens.dashboard.WidgetRenderState(
                             allowNaturalText = true,
                             isExecutingNaturalText = true,
-                            naturalTextPrompt = "Busy"
+                            naturalTextPrompt = "Busy",
+                            generatedSql = "SELECT 1"
                         )
                     )
                 }

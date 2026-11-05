@@ -144,7 +144,10 @@ export class OnboardingService {
     Math.round(((this._currentStepIndex() + 1) / ONBOARDING_STEPS.length) * 100),
   );
 
-  /** Constructor. */ constructor() {
+  /**
+   * Checks persisted onboarding completion state and schedules the first-run onboarding wizard when running in a browser.
+   */
+  constructor() {
     if (isPlatformBrowser(this.platformId)) {
       this.checkAndShowOnboarding();
     }

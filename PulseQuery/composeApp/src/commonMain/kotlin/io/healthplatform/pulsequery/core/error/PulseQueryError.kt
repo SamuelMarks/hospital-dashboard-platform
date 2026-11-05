@@ -270,6 +270,39 @@ sealed class PulseQueryError(
     }
 
     /**
+     * Errors arising from domain or form input validation failures.
+     *
+     * @param message Human-readable validation error explanation.
+     * @param field Optional field identifier associated with the validation error.
+     */
+    sealed class Validation(
+        message: String,
+        open val field: String? = null
+    ) : PulseQueryError(message) {
+        /**
+         * Required field is blank or missing.
+         *
+         * @property field Field identifier.
+         * @property message Validation error message.
+         */
+        data class RequiredField(
+            override val field: String,
+            override val message: String = "$field is required"
+        ) : Validation(message, field)
+
+        /**
+         * Input value failed format, range, or consistency constraints.
+         *
+         * @property field Field identifier.
+         * @property message Validation error message.
+         */
+        data class InvalidValue(
+            override val field: String,
+            override val message: String
+        ) : Validation(message, field)
+    }
+
+    /**
      * Unclassified or generic runtime errors.
      *
      * @property message Error details.

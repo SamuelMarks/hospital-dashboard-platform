@@ -56,11 +56,13 @@ describe('FilterRibbonComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
+  it('should create with default null Signal Form values', () => {
+    expect(component.ribbonForm.dept().value()).toBeNull();
+    expect(component.ribbonForm.startDate().value()).toBeNull();
+    expect(component.ribbonForm.endDate().value()).toBeNull();
   });
 
-  it('should initialize controls from URL query params', () => {
+  it('should initialize and synchronize controls from URL query params via linkedSignal without emitting navigation', () => {
     // Simulate URL being loaded with ?dept=Cardiology
     queryParamsSub.next({
       get: (key: string) => {
@@ -71,10 +73,15 @@ describe('FilterRibbonComponent', () => {
       },
     });
 
-    // Check if form control updated
-    expect(component.formModel().dept).toBe('Cardiology');
-    expect(component.formModel().startDate?.toISOString().startsWith('2023-01-01')).toBe(true);
-    expect(component.formModel().endDate?.toISOString().startsWith('2023-01-31')).toBe(true);
+    // Check if form control updated via linkedSignal without triggering router.navigate
+    expect(component.ribbonForm.dept().value()).toBe('Cardiology');
+    expect(component.ribbonForm.startDate().value()?.toISOString().startsWith('2023-01-01')).toBe(
+      true,
+    );
+    expect(component.ribbonForm.endDate().value()?.toISOString().startsWith('2023-01-31')).toBe(
+      true,
+    );
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 
   it('should navigate when Department changes', () => {
@@ -137,17 +144,11 @@ describe('FilterRibbonComponent', () => {
     );
   });
 
-  it('should not emit navigate during initial load (syncing from route)', () => {
-    component.isSyncingFromRoute = true;
-    component.onDeptChange('Neurology');
-    expect(mockRouter.navigate).not.toHaveBeenCalled();
-  });
-
   it('should cleanup subscriptions on destroy', () => {
     fixture.destroy();
     queryParamsSub.next({
       get: (key: string) => (key === 'dept' ? 'Emergency' : null),
     });
-    expect(component.formModel().dept).toBeNull();
+    expect(component.ribbonForm.dept().value()).toBeNull();
   });
 });

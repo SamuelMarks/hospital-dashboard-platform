@@ -551,6 +551,10 @@ def test_env_isolation_and_libscript_config_consistency() -> None:
   assert db_engines["duckdb"]["required_tables"] == ["hospital_data", "Synthetic_hospital_data_transfers"]
   assert config["frontends"]["web"]["framework"] == "angular"
   assert config["frontends"]["web"]["source_dir"] == "pulse-query-ng-web"
+  assert config["frontends"]["web"]["output_dir"] == "dist/pulse-query-ng-web/browser"
+  assert config["frontends"]["web"]["artifact_check"] == "dist/pulse-query-ng-web/browser/index.html"
+  assert ".libscript_build.sha256" in config["frontends"]["web"]["build_command"]
+  assert "dist/.libscript_src_hash" in config["frontends"]["web"]["build_command"]
   assert config["frontends"]["kmp"]["framework"] == "kmp"
   assert config["frontends"]["kmp"]["source_dir"] == "PulseQuery"
 
@@ -614,14 +618,50 @@ def test_env_isolation_and_libscript_config_consistency() -> None:
   assert install_hooks["install-frontend-deps"]["working_dir"] == "pulse-query-ng-web"
   assert "cmd_windows" in install_hooks["install-frontend-deps"]
 
+  post_install_hooks = {h["name"]: h for h in config["hooks"]["post_install"]}
+  assert "ensure-default-choice-ollama-models" in post_install_hooks
+  assert "gemma2:27b" in post_install_hooks["ensure-default-choice-ollama-models"]["command"]
+
+  build_hooks = {h["name"]: h for h in config["hooks"]["build"]}
+  assert "build-angular-web" in build_hooks
+  build_cmd = build_hooks["build-angular-web"]["command"]
+  build_cmd_win = build_hooks["build-angular-web"]["cmd_windows"]
+  for expected_fp_token in (
+    "package.json",
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "angular.json",
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.spec.json",
+    "index.html",
+    "src",
+    "public",
+    "dist/.libscript_src_hash",
+    ".libscript_build.sha256",
+  ):
+    assert expected_fp_token in build_cmd
+  assert ".libscript_build.sha256" in build_cmd_win
+  assert "dist\\.libscript_src_hash" in build_cmd_win
+
   migrate_hooks = {h["name"]: h for h in config["hooks"]["db_migrate"]}
+  assert "ensure-postgres-role-and-db" in migrate_hooks
+  assert "CREATE DATABASE" in migrate_hooks["ensure-postgres-role-and-db"]["command"]
+  assert "CREATE DATABASE" in migrate_hooks["ensure-postgres-role-and-db"]["cmd_windows"]
   assert migrate_hooks["alembic-upgrade-head"]["working_dir"] == "pulse-query-backend"
+  assert ".venv/.libscript_lock_hash" in migrate_hooks["alembic-upgrade-head"]["command"]
   assert migrate_hooks["ingest-clinical-datasets"]["working_dir"] == "pulse-query-backend"
+  assert "SELECT COUNT(*) FROM hospital_data" in migrate_hooks["ingest-clinical-datasets"]["command"]
+  assert "Synthetic_hospital_data_transfers" in migrate_hooks["ingest-clinical-datasets"]["command"]
   assert "hospital_analytics.duckdb" in migrate_hooks["ingest-clinical-datasets"]["cmd_windows"]
   assert migrate_hooks["seed-dashboard-templates"]["working_dir"] == "pulse-query-backend"
+  assert "SELECT COUNT(*) FROM templates" in migrate_hooks["seed-dashboard-templates"]["command"]
+  assert "SELECT COUNT(*) FROM templates" in migrate_hooks["seed-dashboard-templates"]["cmd_windows"]
   assert "hospital_analytics.duckdb" in migrate_hooks["seed-dashboard-templates"]["cmd_windows"]
   assert "fix-data-directory-ownership" in migrate_hooks
   assert "${SERVICE_USER" in migrate_hooks["fix-data-directory-ownership"]["command"]
+  assert "u+rwX,go+rX" in migrate_hooks["fix-data-directory-ownership"]["command"]
 
   ingress = config["ingress"]
   assert ingress == config["infrastructure"]["network"]["ingress"]
@@ -811,3 +851,134 @@ def test_makefile_dry_run_and_docker_compose_integrity() -> None:
     "frontend_docker",
   ):
     assert f"`{target}`" in readme_text, f"Missing `{target}` in README.md usage table"
+
+
+def test_make_sh_generate_client_and_frontend_build_cache_reuse(tmp_path: Path) -> None:
+  """
+  Verify make.sh, generate_client.sh/.cmd headers/guards, and build-angular-web fingerprint cache reuse.
+
+  Args:
+      tmp_path (Path): Temporary directory fixture.
+  """
+  make_sh_path = REPO_ROOT / "make.sh"
+  gen_sh_path = REPO_ROOT / "generate_client.sh"
+  gen_cmd_path = REPO_ROOT / "generate_client.cmd"
+
+  for sh_path in (make_sh_path, gen_sh_path, TEST_SH_PATH):
+    sh_text = sh_path.read_text(encoding="utf-8")
+    assert sh_text.startswith("#!/bin/sh\n")
+    assert "set -feu" in sh_text
+    assert "THIS_FILE=" in sh_text
+    assert "STACK=" in sh_text
+    assert "LIBSCRIPT_ROOT_DIR" in sh_text
+
+  for cmd_path in (REPO_ROOT / "make.bat", gen_cmd_path, TEST_CMD_PATH):
+    cmd_text = cmd_path.read_text(encoding="utf-8")
+    assert cmd_text.startswith("@echo off\n")
+    assert "EnableDelayedExpansion" in cmd_text
+    assert 'set "THIS_FILE=%~f0"' in cmd_text
+    assert 'findstr /I /C:":!THIS_FILE!:"' in cmd_text
+    assert "LIBSCRIPT_ROOT_DIR" in cmd_text
+
+  # Execute make.sh with no args (dispatches to make help) and with help arg
+  res_make_no_args = subprocess.run(
+    ["/bin/sh", str(make_sh_path)],
+    cwd=str(REPO_ROOT),
+    capture_output=True,
+    text=True,
+    check=False,
+  )
+  assert res_make_no_args.returncode == 0
+  assert "Available commands:" in res_make_no_args.stdout
+
+  res_make_help = subprocess.run(
+    ["/bin/sh", str(make_sh_path), "help"],
+    cwd=str(REPO_ROOT),
+    capture_output=True,
+    text=True,
+    check=False,
+  )
+  assert res_make_help.returncode == 0
+  assert "Available commands:" in res_make_help.stdout
+
+  # Verify STACK guard header logging on make.sh
+  res_guard = subprocess.run(
+    ["/bin/sh", str(make_sh_path), "help"],
+    cwd=str(REPO_ROOT),
+    env={**os.environ, "SCRIPT_NAME": str(make_sh_path)},
+    capture_output=True,
+    text=True,
+    check=False,
+  )
+  assert res_guard.returncode == 0
+  assert "[CONTINUE]" in res_guard.stderr
+
+  # Verify hooks.build[0].command writes both dist/.libscript_src_hash and .libscript_build.sha256
+  # and reuses the build on a second invocation without calling npm run build again.
+  config = json.loads((REPO_ROOT / "libscript.json").read_text(encoding="utf-8"))
+  build_cmd = config["hooks"]["build"][0]["command"]
+
+  fe_dir = tmp_path / "pulse-query-ng-web"
+  (fe_dir / "src").mkdir(parents=True)
+  (fe_dir / "public").mkdir(parents=True)
+  (fe_dir / "package.json").write_text('{"name": "pulse-query-ng-web"}', encoding="utf-8")
+  (fe_dir / "package-lock.json").write_text('{"lockfileVersion": 3}', encoding="utf-8")
+  (fe_dir / "angular.json").write_text("{}", encoding="utf-8")
+  (fe_dir / "tsconfig.json").write_text("{}", encoding="utf-8")
+  (fe_dir / "tsconfig.app.json").write_text("{}", encoding="utf-8")
+  (fe_dir / "tsconfig.spec.json").write_text("{}", encoding="utf-8")
+  (fe_dir / "index.html").write_text("<html></html>", encoding="utf-8")
+  (fe_dir / "src" / "main.ts").write_text("console.log('hi');", encoding="utf-8")
+  (fe_dir / "public" / "favicon.ico").write_text("icon", encoding="utf-8")
+
+  mock_bin = tmp_path / "mock_bin"
+  mock_bin.mkdir()
+  npm_count_file = tmp_path / "npm_build_count.txt"
+  npm_count_file.write_text("0", encoding="utf-8")
+  make_executable(
+    mock_bin / "npm",
+    f"""#!/bin/sh
+c=$(cat "{npm_count_file}")
+echo $((c + 1)) > "{npm_count_file}"
+mkdir -p dist/pulse-query-ng-web/browser
+echo "<html><app-root></app-root></html>" > dist/pulse-query-ng-web/browser/index.html
+echo "const built = '2026-01-01 00:00:00 UTC';" > dist/pulse-query-ng-web/browser/main.js
+""",
+  )
+
+  build_env = {
+    **os.environ,
+    "SERVICE_EXTRA_PATH": str(mock_bin),
+    "FORCE_REBUILD": "0",
+  }
+
+  # 1st run builds and writes both hash files
+  res_build_1 = subprocess.run(
+    ["/bin/sh", "-c", build_cmd],
+    cwd=str(fe_dir),
+    env=build_env,
+    capture_output=True,
+    text=True,
+    check=False,
+  )
+  assert res_build_1.returncode == 0
+  assert "[BUILD] [ng build]" in res_build_1.stdout
+  assert npm_count_file.read_text(encoding="utf-8").strip() == "1"
+  src_hash_file = fe_dir / "dist" / ".libscript_src_hash"
+  sha_hash_file = fe_dir / ".libscript_build.sha256"
+  assert src_hash_file.is_file()
+  assert sha_hash_file.is_file()
+  assert src_hash_file.read_text(encoding="utf-8").strip() == sha_hash_file.read_text(encoding="utf-8").strip()
+
+  # 2nd run reuses cached build without invoking npm again
+  res_build_2 = subprocess.run(
+    ["/bin/sh", "-c", build_cmd],
+    cwd=str(fe_dir),
+    env=build_env,
+    capture_output=True,
+    text=True,
+    check=False,
+  )
+  assert res_build_2.returncode == 0
+  assert "[BUILD] [REUSE]" in res_build_2.stdout
+  assert npm_count_file.read_text(encoding="utf-8").strip() == "1"

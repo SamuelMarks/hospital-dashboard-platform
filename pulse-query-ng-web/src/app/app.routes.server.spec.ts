@@ -10,8 +10,7 @@ describe('serverRoutes', () => {
     const protectedPaths = ['', 'dashboard/:id', 'chat', 'analytics', 'optimization'];
     protectedPaths.forEach((path) => {
       const route = serverRoutes.find((r) => r.path === path);
-      expect(route).toBeTruthy();
-      expect(route?.renderMode).toBe(RenderMode.Client);
+      expect(route).toEqual({ path, renderMode: RenderMode.Client });
     });
   });
 

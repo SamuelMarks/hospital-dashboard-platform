@@ -152,7 +152,7 @@ Object.defineProperty(Function.prototype, 'propMetadata', {
 
     const src = Function.prototype.toString.call(this);
     const inputRegex = new RegExp(
-      '(?:this\\.|__publicField\\(\\s*this\\s*,\\s*[\'"]|\\b)(\\w+)[\'"]?\\s*(?:,|=)[^;\\n]*?\\binput\\)?(?:\\.required\\)?)?\\s*\\(([^;\\n]*)',
+      '(?:this\\.|__publicField\\(\\s*this\\s*,\\s*[\'"]|\\b)(\\w+)[\'"]?\\s*(?:,|=)[^;\\n]*?\\b(?:input|model)\\)?(?:\\.required\\)?)?\\s*\\(([^;\\n]*)',
       'gm',
     );
     let match: RegExpExecArray | null;

@@ -18,7 +18,7 @@ All host, OS, service account (`SERVICE_USER`), filesystem path (`DATA_MOUNT_DIR
 
 - **Dependencies (`deps` & `dependencies`)**: `python 3.12`, `nodejs 22`, `postgres 18`, `duckdb latest`, `nginx latest`, `ollama latest`, and `uv latest`.
 - **Databases (`databases`)**: Automatically provisioned via `_lib/databases/provision_db.sh` (`.cmd`), initializing the `pulse_query_db` PostgreSQL database and `${DUCKDB_PATH}` analytical store and emitting connection strings to `.env.libscript`.
-- **Frontends (`frontends`)**: Built and staged via `_lib/app-servers/provision_frontend.sh` (`.cmd`), supporting both the Angular 17+ SPA (`pulse-query-ng-web/dist/pulse-query-ng-web/browser`) and the Kotlin Multiplatform (KMP) Web WasmJS/JS bundle (`PulseQuery`).
+- **Frontends (`frontends`)**: Built and staged via `_lib/app-servers/provision_frontend.sh` (`.cmd`), supporting both the Angular 22 SPA (`pulse-query-ng-web/dist/pulse-query-ng-web/browser`) and the Kotlin Multiplatform (KMP) Web WasmJS/JS bundle (`PulseQuery`).
 - **Services (`services`)**: Managed via `_lib/init-systems/daemonize.sh` (`.cmd`) across `${INIT_SYSTEM}`, macOS `launchd`, Windows background runners, and POSIX container fallbacks under `${SERVICE_USER}`.
 - **Ingress (`ingress`)**: Applied via `_lib/networking/netctl/cli.sh apply libscript.json` (`.cmd`), emitting Nginx/Caddy/Apache configuration with SPA `try_files $uri $uri/ /index.html` fallback, WebAssembly (`application/wasm wasm;`) MIME types, and WebSocket `Upgrade` headers for `/api` and `/ws`.
 - **Lifecycle Hooks (`hooks`)**: Executes `pre_install`, `install`, `post_install`, `build`, `db_migrate` (Alembic migrations, synthetic clinical CSV ingestion, and template seeding), `pre_start`, and `health` hooks via `_lib/orchestration/run_hooks.sh` (`.cmd`).
@@ -62,7 +62,7 @@ epos\libscript\libscript.cmd stop libscript.json
 ### Frontend & Kotlin Multiplatform (KMP) Builds (`provision_frontend` & `android-sdk`)
 
 ```bash
-# Build and stage Angular 17+ and KMP Web (WasmJS/JS) distributions into webroot/
+# Build and stage Angular 22 and KMP Web (WasmJS/JS) distributions into webroot/
 ~/repos/libscript/_lib/app-servers/provision_frontend.sh --app-dir . --manifest libscript.json --packaging libscript.json
 
 # Install the Android SDK toolchain via LibScript for KMP Android targets

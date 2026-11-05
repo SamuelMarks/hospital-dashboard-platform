@@ -26,6 +26,7 @@ describe('scripts/verify_docs.ts', () => {
     expect(isPlaceholderDoc('store property.')).toBe(true);
     expect(isPlaceholderDoc('Chat store.')).toBe(true);
     expect(isPlaceholderDoc('Store.')).toBe(true);
+    expect(isPlaceholderDoc('Constructor.')).toBe(true);
     expect(isPlaceholderDoc('Creates a new ChatStore.')).toBe(true);
     expect(isPlaceholderDoc('Ng On Init.')).toBe(true);
     expect(isPlaceholderDoc('Initialize component.')).toBe(true);
@@ -186,13 +187,16 @@ export type T2 = string;
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-docs-'));
     fs.mkdirSync(path.join(tmpDir, 'api-client'));
     fs.writeFileSync(path.join(tmpDir, 'api-client', 'ignored.ts'), 'export type X = any;', 'utf8');
-    fs.mkdirSync(path.join(tmpDir, 'test-utils'));
-    fs.writeFileSync(path.join(tmpDir, 'test-utils', 'ignored.ts'), 'export type Y = any;', 'utf8');
     const subDir = path.join(tmpDir, 'feature');
     fs.mkdirSync(subDir);
     fs.writeFileSync(path.join(subDir, 'feature.spec.ts'), 'export type Spec = any;', 'utf8');
     fs.writeFileSync(path.join(subDir, 'feature.d.ts'), 'export type Decl = any;', 'utf8');
     fs.writeFileSync(path.join(subDir, 'test-setup.ts'), 'export type Setup = any;', 'utf8');
+    fs.writeFileSync(
+      path.join(subDir, 'vitest-setup-entry.ts'),
+      'export type Entry = any;',
+      'utf8',
+    );
     fs.writeFileSync(path.join(subDir, 'README.md'), '# Readme', 'utf8');
 
     const validFile = path.join(subDir, 'valid.ts');

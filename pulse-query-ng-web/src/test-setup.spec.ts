@@ -28,12 +28,12 @@ class SampleSignalComponent {
  */
 class AliasedSignalClass {
   /**
-   * Returns synthetic class source containing aliased signal input and output declarations.
+   * Returns synthetic class source containing aliased signal input, output, and model declarations.
    *
    * @returns Synthetic class declaration string.
    */
   static toString(): string {
-    return 'class AliasedSignalClass { this.aliasedInput = input("default", { alias: "customIn" }); this.aliasedOutput = output({ alias: "customOut" }); }';
+    return 'class AliasedSignalClass { this.aliasedInput = input("default", { alias: "customIn" }); this.aliasedOutput = output({ alias: "customOut" }); this.plainModel = model("m"); this.aliasedModel = model("m2", { alias: "customModel" }); }';
   }
 }
 

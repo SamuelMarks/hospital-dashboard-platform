@@ -215,7 +215,8 @@ class FewShotRAGStrategy(PromptStrategy):
     system_content = (
       "You are an expert DuckDB SQL Analyst. "
       "Use the provided similar examples to learn the correct table structures and logic patterns. "
-      "Adapt these patterns to answer the new question."
+      "Adapt these patterns to answer the new question. "
+      "Return ONLY valid DuckDB SQL and optional SQL comments (-- ...) explaining the SQL."
     )
 
     # 3. Build User Prompt (Context + Examples + Task)

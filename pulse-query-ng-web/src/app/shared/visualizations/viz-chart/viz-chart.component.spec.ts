@@ -78,8 +78,8 @@ describe('VizChartComponent', () => {
 
     const segments = fixture.debugElement.queryAll(By.css('.bar-segment'));
     expect(segments.length).toBe(2);
-    expect(segments[0]).toBeTruthy();
-    expect(segments[1]).toBeTruthy();
+    expect((segments[0]?.nativeElement as HTMLElement).style.height).toBe('50%');
+    expect((segments[1]?.nativeElement as HTMLElement).style.height).toBe('50%');
   });
 
   it('should handle empty data set', () => {
@@ -135,8 +135,8 @@ describe('VizChartComponent', () => {
     component.palette.set([]);
     const colors = component.getPalette(0);
     const neg = component.getPalette(-1);
-    expect(colors).toBeTruthy();
-    expect(neg).toBeTruthy();
+    expect(colors).toBe('#1976d2');
+    expect(neg).toBe('#ba1a1a');
   });
 
   it('should incorporate reference lines into scaling and render reference lines in simple and stacked charts', () => {

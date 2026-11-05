@@ -558,8 +558,10 @@ class DashboardViewModelTest {
         vm.createDashboard("New Dashboard")
         awaitIdle(excludeJob = obsJob)
 
-        // deleteDashboard
+        // deleteDashboard (both String and DashboardId value class overloads)
         vm.deleteDashboard("d-1")
+        awaitIdle(excludeJob = obsJob)
+        vm.deleteDashboard(io.healthplatform.pulsequery.core.model.DashboardId("d-1"))
         awaitIdle(excludeJob = obsJob)
 
         // buildWidgetInFromResponse for TEXT, HTTP, and SQL variants (including non-JsonPrimitive config entries)
@@ -757,9 +759,28 @@ class DashboardViewModelTest {
         assertEquals("ollama:llama3", parsedCfg.processor.value)
         assertEquals("Default prompt", parsedCfg.naturalTextPrompt)
 
-        // Success with processorOverride
+        val directSqlPayload = buildJsonObject {
+            put("generated_sql", JsonPrimitive("SELECT 1"))
+            put("processor_used", JsonPrimitive("SQL"))
+        }
+        val parsedDirectSql = vm.parseWidgetExecutionElement(nlWidgetConfigured, directSqlPayload)
+        assertNull(parsedDirectSql.generatedSql)
+        assertEquals("SQL", parsedDirectSql.processor.value)
+
+        // Success with processorOverride (both String and WidgetId value class overloads)
         vm.executeWidgetNaturalText(
             "w-sql",
+            "Show ICU",
+            io.healthplatform.pulsequery.core.model.ProcessorId("ollama:llama3")
+        )
+        awaitIdle()
+        vm.executeWidgetNaturalText(
+            io.healthplatform.pulsequery.core.model.WidgetId("w-sql"),
+            "Show ICU"
+        )
+        awaitIdle()
+        vm.executeWidgetNaturalText(
+            io.healthplatform.pulsequery.core.model.WidgetId("w-sql"),
             "Show ICU",
             io.healthplatform.pulsequery.core.model.ProcessorId("ollama:llama3")
         )

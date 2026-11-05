@@ -36,10 +36,36 @@ import kotlinx.coroutines.launch
  * @property errorMessage User-visible error message if an execution call fails.
  */
 data class EditorUiState(
-    val sqlQuery: String = "SELECT * FROM patient_admissions LIMIT 10;",
+    val sqlQuery: String = "SELECT * FROM hospital_data LIMIT 10;",
     val result: SQLExecutionResponse? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null
+)
+
+/**
+ * Strongly typed command payload for persisting an ad-hoc SQL query as either a dashboard widget
+ * or a reusable template in the library.
+ *
+ * @property destination Selected [SaveQueryDestination].
+ * @property title Title of the widget or template.
+ * @property sql Raw SQL query string.
+ * @property dashboardId Target dashboard ID when [destination] is [SaveQueryDestination.DASHBOARD_WIDGET].
+ * @property visualization Selected visualization type for dashboard widgets.
+ * @property category Template category name when [destination] is [SaveQueryDestination.TEMPLATE].
+ * @property description Template description when [destination] is [SaveQueryDestination.TEMPLATE].
+ * @property widgetSuccessMessage Localized confirmation string when saving a dashboard widget.
+ * @property templateSuccessMessage Localized confirmation string when registering a template.
+ */
+data class SaveQueryCommand(
+    val destination: SaveQueryDestination,
+    val title: String,
+    val sql: String,
+    val dashboardId: String?,
+    val visualization: String = "table",
+    val category: String = "Clinical",
+    val description: String = "",
+    val widgetSuccessMessage: String = UiErrorKey.WIDGET_SAVED_SUCCESS.fallbackMessage,
+    val templateSuccessMessage: String = UiErrorKey.TEMPLATE_REGISTERED_SUCCESS.fallbackMessage
 )
 
 /**
@@ -137,49 +163,30 @@ class EditorViewModel(
     /**
      * Persists a SQL query either as a dashboard widget or as a reusable template in the library.
      *
-     * @param destination Selected [SaveQueryDestination].
-     * @param title Title of the widget or template.
-     * @param sql Raw SQL query string.
-     * @param dashboardId Target dashboard ID when [destination] is [SaveQueryDestination.DASHBOARD_WIDGET].
-     * @param visualization Selected visualization type for dashboard widgets.
-     * @param category Template category name when [destination] is [SaveQueryDestination.TEMPLATE].
-     * @param description Template description when [destination] is [SaveQueryDestination.TEMPLATE].
-     * @param widgetSuccessMessage Localized confirmation string when saving a dashboard widget.
-     * @param templateSuccessMessage Localized confirmation string when registering a template.
+     * @param command Strongly typed [SaveQueryCommand] describing the target destination and metadata.
      * @return [Result] containing a user-facing confirmation message on success.
      */
-    @Suppress("LongParameterList")
-    suspend fun saveQuery(
-        destination: SaveQueryDestination,
-        title: String,
-        sql: String,
-        dashboardId: String?,
-        visualization: String = "table",
-        category: String = "Clinical",
-        description: String = "",
-        widgetSuccessMessage: String = UiErrorKey.WIDGET_SAVED_SUCCESS.fallbackMessage,
-        templateSuccessMessage: String = UiErrorKey.TEMPLATE_REGISTERED_SUCCESS.fallbackMessage
-    ): Result<String> {
+    suspend fun saveQuery(command: SaveQueryCommand): Result<String> {
         return runResultPulseAsync {
-            if (destination == SaveQueryDestination.DASHBOARD_WIDGET && dashboardId != null) {
+            if (command.destination == SaveQueryDestination.DASHBOARD_WIDGET && command.dashboardId != null) {
                 val widgetIn = WidgetIn.Sql(
-                    title = title.trim(),
-                    visualization = visualization,
-                    config = SqlConfig(query = sql)
+                    title = command.title.trim(),
+                    visualization = command.visualization,
+                    config = SqlConfig(query = command.sql)
                 )
                 currentDashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
-                    dashboardId,
+                    command.dashboardId,
                     widgetIn
-                ).asResultMap { widgetSuccessMessage }
+                ).asResultMap { command.widgetSuccessMessage }
             } else {
                 val templateCreate = TemplateCreate(
-                    title = title.trim(),
-                    sqlTemplate = sql,
-                    category = category.trim().ifBlank { "Clinical" },
-                    description = description.trim()
+                    title = command.title.trim(),
+                    sqlTemplate = command.sql,
+                    category = command.category.trim().ifBlank { "Clinical" },
+                    description = command.description.trim()
                 )
                 currentTemplatesApi.createTemplateApiV1TemplatesPost(templateCreate).asResultMap {
-                    templateSuccessMessage
+                    command.templateSuccessMessage
                 }
             }
         }

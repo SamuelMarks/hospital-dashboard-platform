@@ -17,7 +17,7 @@
     >
       <mat-label i18n>Department</mat-label>
       <mat-select
-        [value]="formModel().dept"
+        [value]="ribbonForm.dept().value()"
         (selectionChange)="onDeptChange($event.value)"
         i18n-placeholder
         placeholder="All Departments"
@@ -45,7 +45,7 @@
           matStartDate
           i18n-placeholder
           placeholder="Start"
-          [value]="formModel().startDate"
+          [value]="ribbonForm.startDate().value()"
           (dateChange)="onStartDateChange($event.value)"
           i18n-aria-label
           aria-label="Start Date"
@@ -54,7 +54,7 @@
           matEndDate
           i18n-placeholder
           placeholder="End"
-          [value]="formModel().endDate"
+          [value]="ribbonForm.endDate().value()"
           (dateChange)="onEndDateChange($event.value)"
           i18n-aria-label
           aria-label="End Date"

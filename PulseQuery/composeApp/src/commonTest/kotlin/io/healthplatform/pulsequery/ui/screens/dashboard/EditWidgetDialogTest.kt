@@ -59,6 +59,20 @@ class EditWidgetDialogTest : BaseComposeTest() {
         assertEquals(7, AVAILABLE_VISUALIZATIONS.size)
         assertTrue(AVAILABLE_VISUALIZATIONS.contains("table"))
 
+        val defaultUiState = EditWidgetUiState()
+        assertEquals("", defaultUiState.title)
+        assertEquals("", defaultUiState.subtitle)
+        assertEquals("table", defaultUiState.selectedViz)
+        assertFalse(defaultUiState.showVizDropdown)
+        assertFalse(defaultUiState.allowNaturalText)
+        assertEquals(ProcessorId.SQL_NO_MODEL, defaultUiState.selectedProcessor)
+        assertEquals("", defaultUiState.naturalTextPrompt)
+        assertFalse(defaultUiState.showProcessorDropdown)
+        assertEquals(1, defaultUiState.availableProcessors.size)
+        assertEquals("", defaultUiState.queryOrContent)
+        assertFalse(defaultUiState.isLoading)
+        assertNull(defaultUiState.errorMessage)
+
         val sqlWidget = WidgetResponse(
             id = "w-sql",
             dashboardId = "d-1",
@@ -95,6 +109,14 @@ class EditWidgetDialogTest : BaseComposeTest() {
         assertEquals("SELECT 1", extractInitialWidgetContent(sqlWidget))
         assertEquals("# Header", extractInitialWidgetContent(textWidget))
         assertEquals("https://api.example.com/status", extractInitialWidgetContent(httpWidget))
+
+        val vmWithSubtitle = EditWidgetViewModel(
+            widget = sqlWidget,
+            scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined),
+            dashboardsApi = null,
+            aiApi = null
+        )
+        assertEquals("Hourly", vmWithSubtitle.state.value.subtitle)
 
         assertEquals("Markdown Content", resolveWidgetContentLabel("text"))
         assertEquals("HTTP Endpoint URL", resolveWidgetContentLabel("http"))

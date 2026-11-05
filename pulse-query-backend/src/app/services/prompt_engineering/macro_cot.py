@@ -71,10 +71,10 @@ class MacroCoTStrategy(PromptStrategy):
       "\nGUIDELINES:"
       "\n1. USE MACROS: Do not write complex arithmetic manually (e.g. standard deviation, z-scores). "
       "Use the provided Domain Macros instead."
-      "\n2. THINK STEP-BY-STEP: Before writing SQL, break down the logic: "
+      "\n2. THINK STEP-BY-STEP: Before writing SQL, break down the logic using SQL comments (-- ...): "
       "Identify the Unit, Identify the Time Window, Choose the Statistical Test."
       "\n3. HANDLE SPARSITY: If asking for time-series trends, always LEFT JOIN against `GENERATE_DATES` macro."
-      "\n4. OUTPUT FORMAT: Return valid SQL only."
+      "\n4. OUTPUT FORMAT: Return ONLY valid SQL and SQL comments (-- ...) explaining the SQL."
       f"\n\n{self.MACRO_LIBRARY_DOCS}"
     )
 

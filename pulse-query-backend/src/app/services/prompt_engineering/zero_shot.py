@@ -44,7 +44,7 @@ class ZeroShotStrategy(PromptStrategy):
       "\n1. Dialect: Use DuckDB SQL syntax (PostgreSQL compatible)."
       "\n2. Scope: Use ONLY the tables and columns defined in the context."
       "\n3. Safety: Do not write queries that modify data (INSERT/UPDATE/DROP)."
-      "\n4. Output: Return ONLY the raw SQL code. Do not wrap in markdown. Do not provide explanations."
+      "\n4. Output: Return ONLY the raw SQL code and optional SQL comments (-- ...) explaining the SQL. Do not wrap in markdown. Do not provide conversational prose."
     )
 
   def build_messages(self, user_query: str, schema_context: str) -> list[dict[str, str]]:

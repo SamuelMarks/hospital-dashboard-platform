@@ -13,6 +13,7 @@ import io.healthplatform.pulsequery.api.models.TemplateResponse
 import io.healthplatform.pulsequery.api.models.TextConfig
 import io.healthplatform.pulsequery.api.models.WidgetIn
 import io.healthplatform.pulsequery.api.models.WidgetResponse
+import io.healthplatform.pulsequery.core.error.PulseQueryError
 import io.healthplatform.pulsequery.core.error.UiErrorKey
 import io.healthplatform.pulsequery.core.model.ProcessorCategory
 import io.healthplatform.pulsequery.core.model.ProcessorId
@@ -202,20 +203,33 @@ class WizardViewModel(
     }
 
     /**
+     * Applies a transformation when the active [_state] is either [WizardState.CustomWidgetConfiguration]
+     * or [WizardState.ParameterConfiguration].
+     *
+     * @param onCustom Transformation applied to [WizardState.CustomWidgetConfiguration].
+     * @param onParameter Transformation applied to [WizardState.ParameterConfiguration].
+     */
+    private inline fun updateConfigurationState(
+        onCustom: (WizardState.CustomWidgetConfiguration) -> WizardState.CustomWidgetConfiguration,
+        onParameter: (WizardState.ParameterConfiguration) -> WizardState.ParameterConfiguration
+    ) {
+        when (val current = _state.value) {
+            is WizardState.CustomWidgetConfiguration -> _state.value = onCustom(current)
+            is WizardState.ParameterConfiguration -> _state.value = onParameter(current)
+            else -> Unit
+        }
+    }
+
+    /**
      * Updates whether the widget being configured allows user natural text entry on the dashboard.
      *
      * @param enabled True when natural text input is enabled.
      */
     fun updateAllowNaturalText(enabled: Boolean) {
-        when (val current = _state.value) {
-            is WizardState.CustomWidgetConfiguration -> {
-                _state.value = current.copy(allowNaturalText = enabled, fieldErrors = current.fieldErrors - "content")
-            }
-            is WizardState.ParameterConfiguration -> {
-                _state.value = current.copy(allowNaturalText = enabled)
-            }
-            else -> Unit
-        }
+        updateConfigurationState(
+            onCustom = { it.copy(allowNaturalText = enabled, fieldErrors = it.fieldErrors - "content") },
+            onParameter = { it.copy(allowNaturalText = enabled) }
+        )
     }
 
     /**
@@ -224,15 +238,10 @@ class WizardViewModel(
      * @param processorId Selected [ProcessorId].
      */
     fun selectProcessor(processorId: ProcessorId) {
-        when (val current = _state.value) {
-            is WizardState.CustomWidgetConfiguration -> {
-                _state.value = current.copy(selectedProcessor = processorId)
-            }
-            is WizardState.ParameterConfiguration -> {
-                _state.value = current.copy(selectedProcessor = processorId)
-            }
-            else -> Unit
-        }
+        updateConfigurationState(
+            onCustom = { it.copy(selectedProcessor = processorId) },
+            onParameter = { it.copy(selectedProcessor = processorId) }
+        )
     }
 
     /**
@@ -241,15 +250,10 @@ class WizardViewModel(
      * @param prompt Default natural language prompt or SQL string.
      */
     fun updateNaturalTextPrompt(prompt: String) {
-        when (val current = _state.value) {
-            is WizardState.CustomWidgetConfiguration -> {
-                _state.value = current.copy(naturalTextPrompt = prompt, fieldErrors = current.fieldErrors - "content")
-            }
-            is WizardState.ParameterConfiguration -> {
-                _state.value = current.copy(naturalTextPrompt = prompt)
-            }
-            else -> Unit
-        }
+        updateConfigurationState(
+            onCustom = { it.copy(naturalTextPrompt = prompt, fieldErrors = it.fieldErrors - "content") },
+            onParameter = { it.copy(naturalTextPrompt = prompt) }
+        )
     }
 
     /**
@@ -258,15 +262,10 @@ class WizardViewModel(
      * @param placeholder Placeholder string.
      */
     fun updatePlaceholderText(placeholder: String) {
-        when (val current = _state.value) {
-            is WizardState.CustomWidgetConfiguration -> {
-                _state.value = current.copy(placeholderText = placeholder)
-            }
-            is WizardState.ParameterConfiguration -> {
-                _state.value = current.copy(placeholderText = placeholder)
-            }
-            else -> Unit
-        }
+        updateConfigurationState(
+            onCustom = { it.copy(placeholderText = placeholder) },
+            onParameter = { it.copy(placeholderText = placeholder) }
+        )
     }
 
     /**
@@ -275,15 +274,10 @@ class WizardViewModel(
      * @param subtitle New subtitle or caption string.
      */
     fun updateWidgetSubtitle(subtitle: String) {
-        when (val current = _state.value) {
-            is WizardState.CustomWidgetConfiguration -> {
-                _state.value = current.copy(widgetSubtitle = subtitle)
-            }
-            is WizardState.ParameterConfiguration -> {
-                _state.value = current.copy(widgetSubtitle = subtitle)
-            }
-            else -> Unit
-        }
+        updateConfigurationState(
+            onCustom = { it.copy(widgetSubtitle = subtitle) },
+            onParameter = { it.copy(widgetSubtitle = subtitle) }
+        )
     }
 
     /**
@@ -491,7 +485,7 @@ private fun validateCustomWidgetConfig(
 ): Map<String, String> {
     val errors = mutableMapOf<String, String>()
     if (current.widgetTitle.isBlank()) {
-        errors["title"] = "Title is required"
+        errors["title"] = UiErrorKey.WIZARD_TITLE_REQUIRED.fallbackMessage
     }
     val isSqlWithNaturalText = WidgetSourceType.fromWire(current.creationType) == WidgetSourceType.SQL &&
         current.allowNaturalText
@@ -596,34 +590,61 @@ private fun validateTemplateParameterConfig(
 ): Map<String, String> {
     val errors = mutableMapOf<String, String>()
     if (current.widgetTitle.isBlank()) {
-        errors["title"] = "Title is required"
+        errors["title"] = UiErrorKey.WIZARD_TITLE_REQUIRED.fallbackMessage
     }
     current.parameterFields.forEach { field ->
         val rawValue = current.parameterValues.getValue(field.key)
-        val fieldError = validateSingleParameterField(field, rawValue)
-        if (fieldError != null) {
-            errors[field.key] = fieldError
+        validateSingleParameterField(field, rawValue).onFailure { err ->
+            errors[field.key] = PulseQueryError.fromThrowable(err).message
         }
     }
     return errors
 }
 
 /**
- * Validates a single template [ParameterField] value against requiredness and numeric type constraints.
+ * Validates a single template [ParameterField] value against requiredness and numeric type constraints,
+ * returning [Result.success] with the cleaned string or [Result.failure] with a [PulseQueryError.Validation].
  *
  * @param field Parameter schema definition.
  * @param rawValue User-entered string value.
- * @return Error message if invalid, or null if valid.
+ * @return [Result] containing the cleaned string value on success, or a [PulseQueryError.Validation] on failure.
  */
-private fun validateSingleParameterField(field: ParameterField, rawValue: String): String? {
+internal fun validateSingleParameterField(field: ParameterField, rawValue: String): Result<String> {
     val cleanValue = rawValue.trim()
     if (cleanValue.isEmpty()) {
-        return if (field.isRequired) "${field.title} is required" else null
+        return if (field.isRequired) {
+            Result.failure(
+                PulseQueryError.Validation.RequiredField(
+                    field = field.key,
+                    message = "${field.title} is required"
+                )
+            )
+        } else {
+            Result.success(cleanValue)
+        }
     }
     return when (field.type.lowercase()) {
-        "integer" -> if (cleanValue.toLongOrNull() == null) "${field.title} must be a valid integer" else null
-        "number" -> if (cleanValue.toDoubleOrNull() == null) "${field.title} must be a valid number" else null
-        else -> null
+        "integer" -> if (cleanValue.toLongOrNull() == null) {
+            Result.failure(
+                PulseQueryError.Validation.InvalidValue(
+                    field = field.key,
+                    message = "${field.title} must be a valid integer"
+                )
+            )
+        } else {
+            Result.success(cleanValue)
+        }
+        "number" -> if (cleanValue.toDoubleOrNull() == null) {
+            Result.failure(
+                PulseQueryError.Validation.InvalidValue(
+                    field = field.key,
+                    message = "${field.title} must be a valid number"
+                )
+            )
+        } else {
+            Result.success(cleanValue)
+        }
+        else -> Result.success(cleanValue)
     }
 }
 

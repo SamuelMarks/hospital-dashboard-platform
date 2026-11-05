@@ -18,14 +18,12 @@ import {
   ExecutionService,
   DashboardResponse,
   WidgetResponse,
-  WidgetIn,
 } from '../api-client';
 import { createSignalStateContainer } from '../core/state/signal-store.utils';
 import {
-  buildHttpWidgetConfig,
-  buildSqlWidgetConfig,
-  buildTextWidgetConfig,
-  offsetWidgetCoordinates,
+  buildDuplicateWidgetPayload,
+  buildOptimisticDuplicateWidget,
+  buildSafeModeWidgetConfig,
   sortWidgetsByOrder,
 } from './dashboard-grid-layout.utils';
 import { DashboardFilterPersistenceService } from './dashboard-filter-persistence.service';
@@ -34,9 +32,11 @@ import { DashboardOfflineCacheService } from './dashboard-offline-cache.service'
 import {
   extractWidgetExecutionPayload,
   GlobalFilterParams,
+  invokeSingleWidgetRefresh,
   parseDashboardExecutionMap,
   WidgetExecutionPayload,
   WidgetLayoutPatch,
+  WidgetRefreshOptions,
 } from './dashboard.models';
 
 /**
@@ -335,41 +335,15 @@ export class DashboardStore implements OnDestroy {
     const dash = this.dashboard();
     if (!dash) return;
 
-    const newConfig = offsetWidgetCoordinates(source.config);
-
-    let payload: WidgetIn;
-    if (source.type === 'HTTP') {
-      payload = {
-        title: $localize`Copy of ${source.title}`,
-        type: 'HTTP',
-        visualization: source.visualization,
-        config: buildHttpWidgetConfig(newConfig),
-      };
-    } else if (source.type === 'TEXT') {
-      payload = {
-        title: $localize`Copy of ${source.title}`,
-        type: 'TEXT',
-        visualization: 'markdown',
-        config: buildTextWidgetConfig(newConfig),
-      };
-    } else {
-      payload = {
-        title: $localize`Copy of ${source.title}`,
-        type: 'SQL',
-        visualization: source.visualization,
-        config: buildSqlWidgetConfig(newConfig),
-      };
-    }
-
+    const { payload, offsetConfig } = buildDuplicateWidgetPayload(source);
     const tempId = `temp-${this.dateNow().getTime()}`;
-    const tempWidget: WidgetResponse = {
-      id: tempId,
-      dashboard_id: dash.id,
-      title: payload.title,
-      type: source.type,
-      visualization: source.type === 'TEXT' ? 'markdown' : source.visualization,
-      config: newConfig,
-    };
+    const tempWidget = buildOptimisticDuplicateWidget(
+      source,
+      dash.id,
+      tempId,
+      payload.title,
+      offsetConfig,
+    );
 
     this.patch({ widgets: [...this.widgets(), tempWidget] });
 
@@ -443,8 +417,7 @@ export class DashboardStore implements OnDestroy {
    * @param widget - Target widget model to reset.
    */
   resetWidgetToSafeMode(widget: WidgetResponse): void {
-    const safeConfig: Record<string, unknown> =
-      widget.type === 'SQL' ? { query: 'SELECT 1 as SafeMode' } : {};
+    const safeConfig = buildSafeModeWidgetConfig(widget);
     this.dashboardApi
       .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(widget.id, {
         visualization: 'table',
@@ -572,11 +545,7 @@ export class DashboardStore implements OnDestroy {
    * @param options.naturalText - Optional natural language prompt or SQL query string.
    * @param options.processor - Optional processor identifier (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`).
    */
-  refreshWidget(
-    widgetId: string,
-    forceRefresh = false,
-    options?: { naturalText?: string; processor?: string },
-  ): void {
+  refreshWidget(widgetId: string, forceRefresh = false, options?: WidgetRefreshOptions): void {
     const dash = this.dashboard();
     if (!dash || !widgetId) return;
 
@@ -584,32 +553,14 @@ export class DashboardStore implements OnDestroy {
     currentLoading.add(widgetId);
     this.patch({ loadingWidgetIds: currentLoading, error: null });
 
-    const call$ =
-      options && (options.naturalText !== undefined || options.processor !== undefined)
-        ? this.executionApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(
-            dash.id,
-            widgetId,
-            forceRefresh,
-            undefined,
-            undefined,
-            undefined,
-            'body',
-            false,
-            {
-              ...(options.naturalText !== undefined ? { naturalText: options.naturalText } : {}),
-              ...(options.processor !== undefined ? { processor: options.processor } : {}),
-              requestBody: {
-                ...this._state().globalParams,
-                ...(options.naturalText !== undefined ? { natural_text: options.naturalText } : {}),
-                ...(options.processor !== undefined ? { processor: options.processor } : {}),
-              },
-            },
-          )
-        : this.executionApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(
-            dash.id,
-            widgetId,
-            forceRefresh,
-          );
+    const call$ = invokeSingleWidgetRefresh(
+      this.executionApi,
+      dash.id,
+      widgetId,
+      forceRefresh,
+      this._state().globalParams,
+      options,
+    );
 
     call$
       .pipe(

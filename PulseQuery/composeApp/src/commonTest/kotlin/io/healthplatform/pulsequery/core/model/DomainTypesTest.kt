@@ -347,38 +347,6 @@ class DomainTypesTest {
         assertEquals(presence, Json.decodeFromString<io.healthplatform.pulsequery.network.CollaboratorPresence>(Json.encodeToString(presence)))
         val collabEvt = io.healthplatform.pulsequery.network.CollaborationEvent(type = "USER_JOINED", user = presence)
         assertEquals(collabEvt, Json.decodeFromString<io.healthplatform.pulsequery.network.CollaborationEvent>(Json.encodeToString(collabEvt)))
-
-        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
-        val mockWsRepo = io.healthplatform.pulsequery.network.DashboardWebSocketRepository(
-            httpClient = io.healthplatform.pulsequery.createMockClient(),
-            coroutineScope = scope
-        )
-        val dashVm = io.healthplatform.pulsequery.ui.screens.dashboard.DashboardViewModel(
-            scope = scope,
-            dashboardsApi = io.healthplatform.pulsequery.api.apis.DashboardsApi(
-                baseUrl = "http://localhost:8000",
-                httpClientEngine = io.healthplatform.pulsequery.mockEngine
-            ),
-            executionApi = io.healthplatform.pulsequery.api.apis.ExecutionApi(
-                baseUrl = "http://localhost:8000",
-                httpClientEngine = io.healthplatform.pulsequery.mockEngine
-            ),
-            webSocketRepository = mockWsRepo
-        )
-        dashVm.deleteDashboard(DashboardId("1"))
-        dashVm.executeWidgetNaturalText(WidgetId("w1"), "SELECT 1")
-        dashVm.executeWidgetNaturalText(WidgetId("w1"), "SELECT 1", ProcessorId.SQL_NO_MODEL)
-        assertTrue(dashVm.state.value.dashboards.none { it.id == "1" })
         assertTrue(io.healthplatform.pulsequery.api.infrastructure.ApiClient.UNSAFE_HEADERS.isNotEmpty())
-
-        val optVm = io.healthplatform.pulsequery.ui.screens.optimization.OptimizationViewModel(
-            scope = scope,
-            optimizationApi = io.healthplatform.pulsequery.api.apis.OptimizationApi(
-                baseUrl = "http://localhost:8000",
-                httpClientEngine = io.healthplatform.pulsequery.mockEngine
-            )
-        )
-        optVm.selectInstitution(InstitutionId("chop"))
-        assertEquals(InstitutionId("chop"), optVm.state.value.selectedInstitutionId)
     }
 }

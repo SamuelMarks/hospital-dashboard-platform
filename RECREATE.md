@@ -1,112 +1,120 @@
-# Pulse Query: Kotlin Multiplatform Recreation Guide
+# Pulse Query: Kotlin Multiplatform Architecture & Recreation Guide
 
-This document outlines the architecture, feature mapping, technology stack, and UI/UX strategy required to recreate the Pulse Query frontend in Kotlin Multiplatform (KMP), specifically targeting Mobile (Android/iOS), TV (Android TV/tvOS), and Wearables (Wear OS/watchOS).
+This document details the architecture, feature mapping, technology stack, and UI/UX implementation of the **PulseQuery** Kotlin Multiplatform (`PulseQuery/`) application, targeting Mobile (Android/iOS), Desktop (JVM), Web (Kotlin/Wasm & JS), TV (`tv/dashboard`), and Wearables (`wear/census`).
 
 ---
 
 ## 1. Architecture & Technology Stack
 
-To seamlessly transition from the current Angular web frontend to a native KMP ecosystem, the following stack is recommended:
+The `PulseQuery/` application maintains full feature parity with the `pulse-query-ng-web` Angular 22 SPA using the following Kotlin Multiplatform stack:
 
-| Domain                   | Angular (Current)      | Kotlin Multiplatform (Target)                                                                  |
-| :----------------------- | :--------------------- | :--------------------------------------------------------------------------------------------- |
-| **UI Framework**         | Angular & Material     | Compose Multiplatform (Mobile), Compose for TV, Compose for Wear OS, SwiftUI (Apple platforms) |
-| **State Management**     | RxJS / Angular Signals | Kotlin Coroutines & `StateFlow` (MVI/MVVM pattern)                                             |
-| **Networking**           | `@angular/common/http` | Ktor Client + `kotlinx.serialization`                                                          |
-| **Navigation**           | `@angular/router`      | Voyager or Decompose                                                                           |
-| **Dependency Injection** | Angular DI             | Koin                                                                                           |
-| **Code Editor (SQL)**    | CodeMirror             | `BasicTextField` with custom `AnnotatedString` syntax highlighting, or webview fallback        |
-| **Local Storage**        | Browser `localStorage` | Multiplatform Settings / SQLDelight (Cache)                                                    |
+| Domain                   | Angular (`pulse-query-ng-web`) | Kotlin Multiplatform (`PulseQuery/`)                                                               |
+| :----------------------- | :----------------------------- | :------------------------------------------------------------------------------------------------- |
+| **UI Framework**         | Angular 22 & Material 3        | Compose Multiplatform (Material 3) across Android, iOS, Desktop (JVM), Web (WasmJS/JS), TV, & Wear |
+| **State Management**     | RxJS / Angular Signals         | Kotlin Coroutines & `StateFlow` (MVI/MVVM pattern)                                                 |
+| **Networking**           | `@angular/common/http`         | Ktor Client + `kotlinx.serialization` (generated via `./generate_client.sh`)                       |
+| **Navigation**           | `@angular/router`              | Official Jetpack Navigation Compose (`androidx.navigation.compose`) via `AppRoute`                 |
+| **Dependency Injection** | Angular DI                     | Explicit `AppContainer` composition container (`io.healthplatform.pulsequery.di.AppContainer`)     |
+| **Code Editor (SQL)**    | CodeMirror                     | Compose `OutlinedTextField` / SQL editor with parameter binding and live preview (`EditorScreen`)  |
+| **Local Storage**        | Browser `localStorage`         | SQLDelight (`AppDatabase.sq`) with platform-specific SQLite drivers (Android, iOS, JVM, Web)       |
+| **On-Device ML (ODML)**  | Web/Cloud API                  | `LiteRtModelManager` with SHA-256 verification and `.litertlm` / `.tflite` hot-loading             |
 
 ### Form Factor Considerations
 
-- **Mobile (Phones/Tablets):** The primary environment. Capable of handling complex interactive UI like the `editors`, `mpax-arena`, and `simulation` views.
-- **TV (Android TV, Apple TV):** Focuses heavily on passive data consumption. Prioritize `dashboard`, `analytics`, and `benchmarks` views. Requires D-pad (directional) navigation focus management (`Modifier.focusable()`).
-- **Watch (Wear OS, watchOS):** Focuses on micro-interactions. Features include quick viewing of `dashboard` KPIs, checking the status of ongoing `simulations`, and quick voice-to-text inputs for the `chat` feature.
+- **Mobile & Desktop (`composeApp`):** The primary interactive environment supporting `DashboardScreen`, `WizardScreen`, `ChatScreen`, `AnalyticsScreen`, `AlertRulesScreen`, `EditorScreen`, `OptimizationScreen`, `BenchmarksScreen`, `AdminScreen`, and `UserManagementScreen`.
+- **TV (`tv/dashboard` — `TvDashboardScreen`):** Passive 10-foot wallboard/kiosk view with high-contrast KPI cards, auto-rotating carousel intervals, and directional focus support.
+- **Watch (`wear/census` — `WearableCensusScreen`):** Compact smartwatch companion view displaying critical unit occupancy percentages, acuity alerts, and quick refresh controls.
 
 ---
 
 ## 2. Feature Mapping & Breakdown
 
-The `pulse-query-ng-web/src/app` directory exposes several core features. Here is how they translate to the KMP application:
+The `pulse-query-ng-web/src/app` features map directly to screens in `PulseQuery/composeApp/src/commonMain/kotlin/io/healthplatform/pulsequery/ui/screens`:
 
-### Authentication (`login`, `register`)
+### Authentication (`LoginScreen`, `RegisterScreen`)
 
-- **Mobile:** Standard Form fields. Support for biometric login (Touch ID / Face ID) via KMP expected/actual declarations.
-- **TV:** PIN-based login or "Sign in with Phone" QR code flow.
-- **Watch:** Inherit authentication from paired mobile device via Wearable Data Layer / WatchConnectivity.
+- **Mobile / Desktop / Web:** Material 3 credential forms backed by `AuthApi`, automatic JWT access/refresh token rotation, and offline session persistence in SQLDelight.
 
-### Home / Dashboard (`home`, `dashboard`, `widget`)
+### Home / Dashboard (`DashboardScreen`, `WizardScreen`, `TvDashboardScreen`, `WearableCensusScreen`)
 
-- **Mobile:** Lazy vertical grids for modular, card-based widgets.
-- **TV:** Carousels (`TvLazyRow`) showcasing key performance indicators and high-level charts.
-- **Watch:** Simple, paginated screens or scrolling lists displaying crucial metrics only.
+- **Mobile / Desktop / Web:** Responsive widget grid with custom `Canvas`-drawn visualizations (`BarChart`, `LineChart`, `PieChart`, `Heatmap`), Markdown cards, global filter chips, dashboard sharing, and the Template Marketplace wizard (`WizardScreen`).
+- **TV (`tv/dashboard`):** High-contrast wallboard layout optimized for 10-foot viewing distance.
+- **Watch (`wear/census`):** Compact unit census cards and alert badges for clinical wearables.
 
-### Chat Interface (`chat`)
+### Chat Interface (`ChatScreen`)
 
-- **Mobile:** Standard chat bubbles with a sticky bottom text input field.
-- **TV:** Less emphasized, perhaps quick canned queries or voice search integration.
-- **Watch:** Voice dictation via native APIs to send queries, returning concise textual or graphical responses.
+- **Mobile / Desktop / Web:** Multi-turn conversational AI assistant with SSE streaming, multi-model SQL candidate arena comparison, SQL execution preview, and Query Cart staging.
 
-### Analytics & Benchmarks (`analytics`, `benchmarks`, `mpax-arena`)
+### Analytics, Alert Rules & Benchmarks (`AnalyticsScreen`, `AlertRulesScreen`, `BenchmarksScreen`)
 
-- **Mobile:** Interactive charts using a multiplatform charting library (e.g., Koomi/Vico).
-- **TV:** Large, high-contrast, non-interactive charts optimized for 10ft viewing distance.
-- **Watch:** Minimized sparklines or basic progress indicators.
+- **Analytics:** LLM Arena leaderboard, win-rate charts, and latency comparisons.
+- **Alert Rules:** Clinical threshold rule management (`AlertRulesScreen`) with one-click evaluation against live DuckDB metrics.
+- **Benchmarks:** Text-to-SQL and Hospital Operations Optimization benchmark runner and accuracy scorecards (`BenchmarksScreen`).
 
-### Development & Tools (`editors`, `simulation`, `admin`)
+### Hospital Operations Optimization, SQL Editor & Admin (`OptimizationScreen`, `EditorScreen`, `AdminScreen`, `UserManagementScreen`)
 
-- **Mobile (Tablet preferred):** Split-screen views for code editing and result previews.
-- **TV:** Read-only mode for reviewing active simulation configurations.
-- **Watch:** Notifications for simulation completion; limited to starting/stopping predefined tasks.
+- **Optimization (`OptimizationScreen`):** Natural-language copilot for **Service-Unit Assignments**, **Surgical Scheduling (BEDS & POINTS)**, and **Physician & Nurse Staffing** powered by JAX + MPAX and benchmarked against the JAX Discrete Event Simulation (DES) expert baseline, plus LiteRT on-device model management and clinician UX surveys.
+- **SQL Editor (`EditorScreen`):** Ad-hoc read-only DuckDB SQL runner with tabular result inspection.
+- **Admin (`AdminScreen`, `UserManagementScreen`):** LLM provider configuration, system diagnostics, and RBAC user directory management.
 
 ---
 
 ## 3. UI Flow & Navigation State
 
-Using **Voyager** or **Decompose**, navigation should be state-driven.
-
-- Root Component determines Authentication State.
-- Main Component handles bottom navigation (Mobile), side navigation rail (TV), or swipe-based paging (Watch).
-
-**Example Navigation Tree:**
+Navigation in `PulseQuery` uses official **Jetpack Navigation Compose** (`NavHost` + `rememberNavController`) with the strongly typed `AppRoute` enum in `App.kt`:
 
 ```kotlin
-sealed class Screen {
-    object Login : Screen()
-    object Dashboard : Screen()
-    data class Chat(val sessionId: String?) : Screen()
-    object Analytics : Screen()
-    data class SimulationDetails(val simId: String) : Screen()
+enum class AppRoute(
+    val route: String,
+    val showBottomBar: Boolean
+) {
+    LOGIN("login", false),
+    REGISTER("register", false),
+    DASHBOARD("dashboard", true),
+    WIZARD_WITH_DASHBOARD("wizard/{dashboardId}", false),
+    WIZARD("wizard", false),
+    CHAT("chat", true),
+    ANALYTICS("analytics", true),
+    ALERT_RULES("alert_rules", true),
+    EDITOR("editor", true),
+    OPTIMIZATION("optimization", true),
+    OPTIMIZATION_WITH_PROMPT("optimization?prompt={prompt}", true),
+    BENCHMARKS("benchmarks", true),
+    ADMIN("admin", true),
+    ADMIN_USERS("admin/users", true),
+    TV_DASHBOARD("tv/dashboard", false),
+    WEAR_CENSUS("wear/census", false);
 }
 ```
 
 ---
 
-## 4. Required KMP Modules Setup
+## 4. KMP Module & Source Set Structure
 
-Your Kotlin Multiplatform project structure should look like this:
+The `PulseQuery/` project structure is organized as follows:
 
 ```
-├── composeApp/            # Shared UI (Compose Multiplatform)
-│   ├── src/commonMain/    # Core UI components, ViewModels, Voyager screens
-│   ├── src/androidMain/   # Android specific UI (Mobile & TV)
-│   └── src/iosMain/       # iOS specific UI setup
-├── shared/                # Business Logic & Data
-│   ├── src/commonMain/    # Ktor Client, Models, StateFlows, Repositories
-│   ├── src/androidMain/   # Android specific implementations (e.g. settings)
-│   └── src/iosMain/       # iOS specific implementations
-├── tvApp/                 # Native wrapper for Android TV (using Compose for TV)
-└── wearApp/               # Native wrapper for Wear OS (using Compose for Wear OS)
+PulseQuery/
+├── composeApp/
+│   ├── src/commonMain/        # Shared Compose UI, ViewModels, Ktor API SDK, SQLDelight, LiteRT manager
+│   ├── src/commonTest/        # Shared unit tests (100% coverage enforced via Kover)
+│   ├── src/androidMain/       # Android-specific drivers, platform bindings, and MainActivity
+│   ├── src/androidUnitTest/   # Android unit tests
+│   ├── src/iosMain/           # iOS MainViewController and native SQLite driver
+│   ├── src/iosTest/           # iOS unit tests
+│   ├── src/jvmMain/           # Desktop JVM entrypoint and JDBC SQLite driver
+│   ├── src/jvmTest/           # JVM integration & database tests
+│   ├── src/webMain/           # Shared Web bindings
+│   ├── src/wasmJsMain/        # Kotlin/Wasm browser target
+│   └── src/jsMain/            # Kotlin/JS browser target
+└── iosApp/                    # Xcode project wrapper for iOS / Apple targets
 ```
-
-_(Note: Apple TV and Apple Watch apps will be native Swift/SwiftUI projects interacting with the exported `shared` framework)_
 
 ---
 
 ## 5. OpenAPI Specification
 
-Below is the OpenAPI specification extracted from the current backend. You can use the `openapi-generator-cli` (with the `kotlin` or `kotlin-multiplatform` generator) to automatically build the network models and API interfaces for the Ktor client.
+Below is the OpenAPI specification extracted from the backend (`pulse-query-backend/openapi.json`). Running `./generate_client.sh` at the repository root extracts this schema and generates both the Angular TypeScript client and the KMP Ktor client (`PulseQuery/composeApp/src/commonMain/kotlin/io/healthplatform/pulsequery/api`).
 
 <details>
 <summary>Click to expand OpenAPI JSON</summary>
@@ -124,17 +132,35 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "post": {
         "tags": ["auth"],
         "summary": "Register User",
-        "description": "Register a new user in the system.\n\nSteps:\n1. Verify email uniqueness.\n2. Create User record.\n3. Flush session (to generate User ID).\n4. Call Provisioning Service to create default dashboard/widgets.\n5. Commit transaction.\n\nArgs:\n    user_in (UserCreate): The payload containing email and password.\n    db (AsyncSession): Database session.\n\nReturns:\n    User: The newly created user object.\n\nRaises:\n    HTTPException: If email already exists.",
+        "description": "Registers a new user in the system and provisions their default dashboard.\n\nArgs:\n    user_in (UserCreate): The payload containing email and password.\n    db (AsyncSession): Database session.\n    accept_language (str | None): Optional HTTP `Accept-Language` header for localized error messages.\n\nReturns:\n    User: The newly created user object.\n\nRaises:\n    HTTPException: If email already exists.",
         "operationId": "register_user_api_v1_auth_register_post",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UserCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -164,13 +190,71 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "post": {
         "tags": ["auth"],
         "summary": "Login Access Token",
-        "description": "OAuth2 compatible token login, get an access token for future requests.\n\nArgs:\n    form_data (OAuth2PasswordRequestForm): Login credentials (username=email).\n    db (AsyncSession): Database session.\n\nReturns:\n    Token: Access token and type.",
+        "description": "OAuth2 compatible token login, issuing an access and refresh token pair.\n\nArgs:\n    form_data (OAuth2PasswordRequestForm): Login credentials (username=email).\n    db (AsyncSession): Database session.\n    accept_language (str | None): Optional HTTP `Accept-Language` header for localized error messages.\n\nReturns:\n    Token: Access and refresh tokens.\n\nRaises:\n    HTTPException: 400 on invalid credentials or inactive user.",
         "operationId": "login_access_token_api_v1_auth_login_post",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/x-www-form-urlencoded": {
               "schema": {
                 "$ref": "#/components/schemas/Body_login_access_token_api_v1_auth_login_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Token"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Refresh Access Token",
+        "description": "Rotates refresh token and issues a new access and refresh token pair.\n\nArgs:\n    payload (RefreshTokenRequest): Active refresh token.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    Token: New rotated access and refresh tokens.\n\nRaises:\n    HTTPException: 401 if refresh token is invalid, expired, or revoked.",
+        "operationId": "refresh_access_token_api_v1_auth_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
               }
             }
           },
@@ -200,12 +284,150 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         }
       }
     },
+    "/api/v1/auth/revoke": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Revoke Session",
+        "description": "Revokes an active refresh token session.\n\nArgs:\n    payload (RefreshTokenRequest): Refresh token to revoke.\n    db (AsyncSession): PostgreSQL async database session.",
+        "operationId": "revoke_session_api_v1_auth_revoke_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Forgot Password",
+        "description": "Generates a secure password reset token and dispatches reset instructions.\n\nArgs:\n    payload (ForgotPasswordRequest): Email address of requesting user.\n    db (AsyncSession): PostgreSQL async database session.\n    email_service (EmailNotificationService): Transactional email service dependency.\n\nReturns:\n    PasswordResetResponse: Confirmation message (reset token omitted from response).",
+        "operationId": "forgot_password_api_v1_auth_forgot_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordResetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Reset Password",
+        "description": "Resets user account password and revokes existing sessions.\n\nArgs:\n    payload (ResetPasswordRequest): Reset token and new password.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    PasswordResetResponse: Success confirmation message.\n\nRaises:\n    HTTPException: 400 if reset token is invalid or expired.\n    HTTPException: 404 if the user cannot be located.",
+        "operationId": "reset_password_api_v1_auth_reset_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordResetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/me": {
       "get": {
         "tags": ["auth"],
         "summary": "Read Users Me",
-        "description": "Fetch the current logged in user profile.",
+        "description": "Fetches the current logged in user profile.\n\nArgs:\n    current_user (User): Authenticated user.\n\nReturns:\n    User: Current user model instance.",
         "operationId": "read_users_me_api_v1_auth_me_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -216,57 +438,176 @@ Below is the OpenAPI specification extracted from the current backend. You can u
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
+        }
+      }
+    },
+    "/api/v1/dashboards": {
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "List Dashboards",
+        "description": "Lists all dashboards owned by or shared with the current user.\n\nArgs:\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    list[Dashboard]: List of accessible dashboards.",
+        "operationId": "list_dashboards_api_v1_dashboards_get",
         "security": [
           {
             "OAuth2PasswordBearer": []
           }
-        ]
-      }
-    },
-    "/api/v1/dashboards/": {
-      "get": {
-        "tags": ["dashboards"],
-        "summary": "List Dashboards",
-        "description": "List all dashboards owned by the current user.",
-        "operationId": "list_dashboards_api_v1_dashboards__get",
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/DashboardResponse"
                   },
-                  "type": "array",
-                  "title": "Response List Dashboards Api V1 Dashboards  Get"
+                  "title": "Response List Dashboards Api V1 Dashboards Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/api/v1/dashboards/": {
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "List Dashboards",
+        "description": "Lists all dashboards owned by or shared with the current user.\n\nArgs:\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    list[Dashboard]: List of accessible dashboards.",
+        "operationId": "list_dashboards_api_v1_dashboards__get",
         "security": [
           {
             "OAuth2PasswordBearer": []
           }
-        ]
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DashboardResponse"
+                  },
+                  "title": "Response List Dashboards Api V1 Dashboards  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       },
       "post": {
         "tags": ["dashboards"],
         "summary": "Create Dashboard",
-        "description": "Create a new empty dashboard.",
+        "description": "Creates a new empty dashboard.\n\nArgs:\n    dashboard_in (DashboardCreate): Dashboard creation payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Dashboard: Newly created dashboard.",
         "operationId": "create_dashboard_api_v1_dashboards__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DashboardCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -289,19 +630,14 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               }
             }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/dashboards/{dashboard_id}/clone": {
       "post": {
         "tags": ["dashboards"],
         "summary": "Clone Dashboard",
-        "description": "Creates a deep copy of an existing dashboard and all its widgets.\nThe new dashboard will have the name \"Copy of {original_name}\".\n\nArgs:\n    dashboard_id (UUID): The ID of the dashboard to clone.\n    current_user (User): Authenticated user (must own the dashboard).\n    db (AsyncSession): Database session.\n\nReturns:\n    DashboardResponse: The newly created dashboard populated with cloned widgets.",
+        "description": "Creates a deep copy of an existing dashboard and all its widgets.\n\nArgs:\n    dashboard_id (UUID): The ID of the dashboard to clone.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Dashboard: Newly cloned dashboard.",
         "operationId": "clone_dashboard_api_v1_dashboards__dashboard_id__clone_post",
         "security": [
           {
@@ -317,6 +653,40 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "type": "string",
               "format": "uuid",
               "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -348,8 +718,33 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "post": {
         "tags": ["dashboards"],
         "summary": "Restore Default Dashboard",
-        "description": "Re-creates the standard 'Hospital Command Center' dashboard.\nIf the dashboard already exists, creates a copy with a suffix to prevent data loss.\nPopulates the dashboard with all currently active templates in the registry.",
+        "description": "Re-creates the standard 'Hospital Command Center' dashboard.\n\nArgs:\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Dashboard: Restored default dashboard.",
         "operationId": "restore_default_dashboard_api_v1_dashboards_restore_defaults_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -360,20 +755,25 @@ Below is the OpenAPI specification extracted from the current backend. You can u
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/dashboards/{dashboard_id}": {
       "get": {
         "tags": ["dashboards"],
         "summary": "Get Dashboard",
-        "description": "Get a specific dashboard details.",
+        "description": "Gets details for a specific dashboard.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Dashboard: Authorized dashboard model.",
         "operationId": "get_dashboard_api_v1_dashboards__dashboard_id__get",
         "security": [
           {
@@ -389,6 +789,40 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "type": "string",
               "format": "uuid",
               "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -418,7 +852,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "put": {
         "tags": ["dashboards"],
         "summary": "Update Dashboard",
-        "description": "Rename a dashboard.",
+        "description": "Renames an existing dashboard.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    dashboard_update (DashboardCreate): Updated name payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Dashboard: Updated dashboard model.",
         "operationId": "update_dashboard_api_v1_dashboards__dashboard_id__put",
         "security": [
           {
@@ -434,6 +868,40 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "type": "string",
               "format": "uuid",
               "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -473,7 +941,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "delete": {
         "tags": ["dashboards"],
         "summary": "Delete Dashboard",
-        "description": "Delete dashboard (and cascades to widgets).",
+        "description": "Deletes a dashboard (cascading to widgets and shares). Only the owner can delete.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    current_user (User): Authenticated owner.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.",
         "operationId": "delete_dashboard_api_v1_dashboards__dashboard_id__delete",
         "security": [
           {
@@ -489,6 +957,40 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "type": "string",
               "format": "uuid",
               "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -513,7 +1015,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "post": {
         "tags": ["dashboards"],
         "summary": "Create Widget",
-        "description": "Add a widget to the dashboard with Dry-Run Validation.",
+        "description": "Adds a widget to the dashboard with dry-run SQL validation.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    widget_in (WidgetCreate): Polymorphic widget creation payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Widget: Created widget model.",
         "operationId": "create_widget_api_v1_dashboards__dashboard_id__widgets_post",
         "security": [
           {
@@ -529,6 +1031,40 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "type": "string",
               "format": "uuid",
               "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -589,7 +1125,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "put": {
         "tags": ["dashboards"],
         "summary": "Update Widget",
-        "description": "Update widget configuration (e.g., resize, change query) with Dry-Run.",
+        "description": "Updates widget configuration (e.g., resize, change query) with dry-run SQL validation.\n\nArgs:\n    widget_id (UUID): Target widget ID.\n    widget_in (WidgetUpdate): Partial widget update payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Widget: Updated widget model.",
         "operationId": "update_widget_api_v1_dashboards_widgets__widget_id__put",
         "security": [
           {
@@ -605,6 +1141,40 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "type": "string",
               "format": "uuid",
               "title": "Widget Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -644,7 +1214,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "delete": {
         "tags": ["dashboards"],
         "summary": "Delete Widget",
-        "description": "Delete a widget owned by the current user.",
+        "description": "Deletes a widget from a dashboard.\n\nArgs:\n    widget_id (UUID): Target widget ID.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.",
         "operationId": "delete_widget_api_v1_dashboards_widgets__widget_id__delete",
         "security": [
           {
@@ -660,6 +1230,40 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "type": "string",
               "format": "uuid",
               "title": "Widget Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -684,7 +1288,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "post": {
         "tags": ["dashboards"],
         "summary": "Reorder Widgets",
-        "description": "Bulk update widget positions and groups.\nUsed for Drag-and-Drop persistence.",
+        "description": "Bulk updates widget positions and groups for drag-and-drop persistence.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    request (WidgetReorderRequest): Bulk reorder items.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    dict[str, int]: Count of updated widgets.",
         "operationId": "reorder_widgets_api_v1_dashboards__dashboard_id__reorder_post",
         "security": [
           {
@@ -700,6 +1304,40 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "type": "string",
               "format": "uuid",
               "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -720,7 +1358,9 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true,
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
                   "title": "Response Reorder Widgets Api V1 Dashboards  Dashboard Id  Reorder Post"
                 }
               }
@@ -739,11 +1379,538 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         }
       }
     },
+    "/api/v1/dashboards/{dashboard_id}/export": {
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "Export Dashboard",
+        "description": "Exports dashboard layout, configuration, and data snapshot in JSON or CSV format.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    current_user (User): Authenticated user requesting export.\n    db (AsyncSession): Database session.\n    format (str): Export format ('json' or 'csv').\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Response: File download stream with appropriate media type.",
+        "operationId": "export_dashboard_api_v1_dashboards__dashboard_id__export_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(json|csv)$",
+              "default": "json",
+              "title": "Format"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}/export": {
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "Export Widget",
+        "description": "Exports an individual widget configuration and its analytical data snapshot.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    widget_id (UUID): Target widget ID within the dashboard.\n    current_user (User): Authenticated user requesting export.\n    db (AsyncSession): PostgreSQL async database session.\n    format (str): Export format ('json' or 'csv').\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Response: Streaming file download with appropriate MIME type and Content-Disposition.",
+        "operationId": "export_widget_api_v1_dashboards__dashboard_id__widgets__widget_id__export_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "widget_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Widget Id"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(json|csv)$",
+              "default": "json",
+              "title": "Format"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}/export/pdf": {
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "Export Dashboard Pdf",
+        "description": "Exports dashboard layout, clinical metadata, and data snapshot formatted as a PDF report.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    current_user (User): Authenticated user requesting export.\n    db (AsyncSession): Database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Response: Binary stream formatted as an application/pdf document.",
+        "operationId": "export_dashboard_pdf_api_v1_dashboards__dashboard_id__export_pdf_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}/shares": {
+      "post": {
+        "tags": ["dashboards"],
+        "summary": "Share Dashboard",
+        "description": "Shares a dashboard with another user by email. Only the dashboard owner can share.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    share_in (DashboardShareCreate): Email and permission level ('VIEW' or 'EDIT').\n    current_user (User): Authenticated user (must be owner).\n    db (AsyncSession): Database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    DashboardShareResponse: Details of created or updated share.",
+        "operationId": "share_dashboard_api_v1_dashboards__dashboard_id__shares_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DashboardShareCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardShareResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "List Dashboard Shares",
+        "description": "Lists all active shares on a dashboard. Accessible to owners and collaborators.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    current_user (User): Authenticated user with access.\n    db (AsyncSession): Database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    list[DashboardShareResponse]: List of active shares.",
+        "operationId": "list_dashboard_shares_api_v1_dashboards__dashboard_id__shares_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DashboardShareResponse"
+                  },
+                  "title": "Response List Dashboard Shares Api V1 Dashboards  Dashboard Id  Shares Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}/shares/{share_id}": {
+      "delete": {
+        "tags": ["dashboards"],
+        "summary": "Delete Dashboard Share",
+        "description": "Revokes a dashboard share. Only the dashboard owner can revoke shares.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    share_id (UUID): Share ID to revoke.\n    current_user (User): Authenticated user (must be owner).\n    db (AsyncSession): Database session.\n    accept_language (str | None): Language preference header.",
+        "operationId": "delete_dashboard_share_api_v1_dashboards__dashboard_id__shares__share_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "share_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Share Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/dashboards/{dashboard_id}/refresh": {
       "post": {
         "tags": ["execution"],
         "summary": "Refresh Dashboard",
-        "description": "Refreshes data for ALL widgets in a specific dashboard.\nInjects global_params into SQL queries before execution.",
+        "description": "Refreshes data for ALL widgets in a specific dashboard.\nInjects `global_params` into SQL queries before execution.\n\nArgs:\n    dashboard_id (UUID): ID of the target dashboard to refresh.\n    current_user (User): Authenticated user requesting the refresh.\n    db (AsyncSession): PostgreSQL async database session.\n    authorization (str | None): Authorization header for token forwarding.\n    accept_language (str | None): Preferred response language header.\n    global_params (JsonObject): Global filter parameters for queries.\n\nReturns:\n    dict[UUID, WidgetCachePayload]: Map of widget UUID to execution results.",
         "operationId": "refresh_dashboard_api_v1_dashboards__dashboard_id__refresh_post",
         "security": [
           {
@@ -762,6 +1929,24 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             }
           },
           {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
             "name": "authorization",
             "in": "header",
             "required": false,
@@ -776,16 +1961,30 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               ],
               "title": "Authorization"
             }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
           }
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "default": {},
-                "title": "Global Params"
+                "$ref": "#/components/schemas/JsonObject-Input",
+                "default": {}
               }
             }
           }
@@ -797,7 +1996,31 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true,
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/components/schemas/SqlExecutionPayload"
+                      },
+                      {
+                        "$ref": "#/components/schemas/HttpExecutionPayload"
+                      },
+                      {
+                        "$ref": "#/components/schemas/TextExecutionPayload"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ErrorExecutionPayload"
+                      }
+                    ],
+                    "discriminator": {
+                      "propertyName": "kind",
+                      "mapping": {
+                        "sql": "#/components/schemas/SqlExecutionPayload",
+                        "http": "#/components/schemas/HttpExecutionPayload",
+                        "text": "#/components/schemas/TextExecutionPayload",
+                        "error": "#/components/schemas/ErrorExecutionPayload"
+                      }
+                    }
+                  },
                   "propertyNames": {
                     "format": "uuid"
                   },
@@ -823,7 +2046,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "post": {
         "tags": ["execution"],
         "summary": "Refresh Widget",
-        "description": "Refreshes data for a SINGLE widget.\nSupports ?force_refresh=true to bypass cache.",
+        "description": "Refreshes data for a SINGLE widget.\nSupports `?force_refresh=true` to bypass cache, optional `natural_text` and `processor`\n(either as query params or inside `WidgetRefreshRequest`), and optional global filter parameters.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    widget_id (UUID): Target widget ID within the dashboard.\n    current_user (User): Authenticated user requesting refresh.\n    db (AsyncSession): PostgreSQL async database session.\n    authorization (str | None): Optional authorization header for forwarding.\n    accept_language (str | None): Preferred response language header.\n    force_refresh (bool): Whether to bypass query cache.\n    natural_text (str | None): Optional user-entered natural text or SQL query.\n    processor (str | None): Optional processor override (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`).\n    refresh_request (WidgetRefreshRequest | None): Optional strongly typed widget refresh request body.\n\nReturns:\n    dict[UUID, WidgetCachePayload]: Dictionary mapping widget ID to query execution payload.",
         "operationId": "refresh_widget_api_v1_dashboards__dashboard_id__widgets__widget_id__refresh_post",
         "security": [
           {
@@ -862,6 +2085,56 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             }
           },
           {
+            "name": "natural_text",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Natural Text"
+            }
+          },
+          {
+            "name": "processor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Processor"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
             "name": "authorization",
             "in": "header",
             "required": false,
@@ -876,8 +2149,41 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               ],
               "title": "Authorization"
             }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/WidgetRefreshRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Refresh Request"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -885,7 +2191,31 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true,
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/components/schemas/SqlExecutionPayload"
+                      },
+                      {
+                        "$ref": "#/components/schemas/HttpExecutionPayload"
+                      },
+                      {
+                        "$ref": "#/components/schemas/TextExecutionPayload"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ErrorExecutionPayload"
+                      }
+                    ],
+                    "discriminator": {
+                      "propertyName": "kind",
+                      "mapping": {
+                        "sql": "#/components/schemas/SqlExecutionPayload",
+                        "http": "#/components/schemas/HttpExecutionPayload",
+                        "text": "#/components/schemas/TextExecutionPayload",
+                        "error": "#/components/schemas/ErrorExecutionPayload"
+                      }
+                    }
+                  },
                   "propertyNames": {
                     "format": "uuid"
                   },
@@ -911,7 +2241,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "get": {
         "tags": ["ai"],
         "summary": "List Available Models",
-        "description": "Returns the list of currently configured LLMs available for the Arena.",
+        "description": "Returns the list of currently configured LLMs and processors available for the Arena or Widgets.\n\nArgs:\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active database session.\n    show_all (bool): Whether to bypass admin model visibility filtering.\n    include_sql (bool): Whether to include the `'SQL'` (`SQL [no model]`) processor option.\n    discover_ollama (bool): Whether to dynamically query Ollama `/api/tags` for local models.\n\nReturns:\n    list[ModelInfo]: List of configured LLM combatants and/or SQL processor.",
         "operationId": "list_available_models_api_v1_ai_models_get",
         "security": [
           {
@@ -928,6 +2258,44 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "default": false,
               "title": "Show All"
             }
+          },
+          {
+            "name": "include_sql",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Sql"
+            }
+          },
+          {
+            "name": "discover_ollama",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Discover Ollama"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -958,21 +2326,176 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         }
       }
     },
+    "/api/v1/ai/health": {
+      "get": {
+        "tags": ["ai"],
+        "summary": "Get Llm Health",
+        "description": "Probes connection validity across all configured LLM models (`any-llm`, Ollama, `gemma-4-sql`, Gemini)\nand verifies read-only DuckDB analytical readiness.\n\nArgs:\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active database session.\n    run_smoke_test (bool): Whether to run a 1-token smoke completion against each model.\n\nReturns:\n    LlmHealthSummaryResponse: Aggregated connection status and per-provider telemetry.",
+        "operationId": "get_llm_health_api_v1_ai_health_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_smoke_test",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Run Smoke Test"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmHealthSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/models/verify": {
+      "post": {
+        "tags": ["ai"],
+        "summary": "Verify Model Connection",
+        "description": "Verifies connection validity and optional 1-token smoke inference for a specific LLM model or provider.\n\nArgs:\n    request (LlmConnectionTestRequest): Provider and model verification parameters.\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active database session.\n\nReturns:\n    LlmProviderHealthResponse: Detailed connection status, latency, and remediation guidance.",
+        "operationId": "verify_model_connection_api_v1_ai_models_verify_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LlmConnectionTestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmProviderHealthResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ai/generate": {
       "post": {
         "tags": ["ai"],
         "summary": "Generate Sql Comparison",
-        "description": "Generates SQL usage the Multi-LLM Arena.\n\nThis endpoint:\n1. Broadcasts the prompt to all configured LLMs.\n2. Persists the results as an Experiment.\n3. Returns a list of candidates so the frontend can display a comparison view.\n\nArgs:\n    request (SQLGenerationRequest): The prompt payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Database session for logging.\n\nReturns:\n    ExperimentResponse: Object containing experiment ID and list of candidate SQLs.",
+        "description": "Generates SQL using the Multi-LLM Arena.\n\nArgs:\n    request (SQLGenerationRequest): The prompt payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Database session for logging.\n\nReturns:\n    ExperimentResponse: Object containing experiment ID and list of candidate SQLs.",
         "operationId": "generate_sql_comparison_api_v1_ai_generate_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SQLGenerationRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -995,29 +2518,134 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/api/v1/ai/experiments/{experiment_id}/candidates/{candidate_id}/vote": {
+      "post": {
+        "tags": ["ai"],
+        "summary": "Vote Experiment Candidate",
+        "description": "Records a user vote and optional execution telemetry for an Arena `ModelCandidate`.\n\nArgs:\n    experiment_id (UUID): Target experiment UUID.\n    candidate_id (UUID): Winning candidate UUID.\n    payload (FeedbackUpdate): Selection flag and optional execution telemetry.\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active database session.\n\nReturns:\n    ExperimentResponse: Updated experiment state with selected candidate reflected.",
+        "operationId": "vote_experiment_candidate_api_v1_ai_experiments__experiment_id__candidates__candidate_id__vote_post",
         "security": [
           {
             "OAuth2PasswordBearer": []
           }
-        ]
+        ],
+        "parameters": [
+          {
+            "name": "experiment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Experiment Id"
+            }
+          },
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Candidate Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExperimentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/ai/execute": {
       "post": {
         "tags": ["ai"],
         "summary": "Execute Sql Preview",
-        "description": "Executes SQL (read-only) and returns a small preview result.\nIntended for Arena candidate comparison in the UI.",
+        "description": "Executes SQL (read-only) and returns a small preview result.\nIntended for Arena candidate comparison in the UI.\n\nArgs:\n    request (SQLExecutionRequest): SQL query and optional global filter parameters.\n    current_user (User): Authenticated user session.\n    olap_conn (duckdb.DuckDBPyConnection | None): Optional pre-opened DuckDB connection.\n\nReturns:\n    SQLExecutionResponse: Tabular rows, column names, or error details.",
         "operationId": "execute_sql_preview_api_v1_ai_execute_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SQLExecutionRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1040,19 +2668,14 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               }
             }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/templates/": {
       "get": {
         "tags": ["templates"],
         "summary": "List Templates",
-        "description": "Retrieve a list of available widget templates with filtering and pagination.\n\nArgs:\n    db (AsyncSession): Database session dependency.\n    category (Optional[str]): Filter templates by category name.\n    search (Optional[str]): Case-insensitive search term for title or description.\n    limit (int): Maximum number of records to return.\n    current_user (User): Authenticated user dependency.\n\nReturns:\n    List[WidgetTemplate]: Filtered list of templates.",
+        "description": "Retrieve a list of available widget templates with filtering and pagination.\n\nArgs:\n    db (AsyncSession): Database session dependency.\n    category (str | None): Filter templates by category name.\n    search (str | None): Case-insensitive search term for title or description.\n    limit (int): Maximum number of records to return.\n    current_user (User): Authenticated user dependency.\n\nReturns:\n    list[WidgetTemplate]: Filtered list of templates.",
         "operationId": "list_templates_api_v1_templates__get",
         "security": [
           {
@@ -1109,6 +2732,24 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "title": "Limit"
             },
             "description": "Max records to return"
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1146,6 +2787,26 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         "security": [
           {
             "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "requestBody": {
@@ -1203,6 +2864,24 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "format": "uuid",
               "title": "Template Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1248,6 +2927,24 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "format": "uuid",
               "title": "Template Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "requestBody": {
@@ -1303,6 +3000,24 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "format": "uuid",
               "title": "Template Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1322,21 +3037,56 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         }
       }
     },
-    "/api/v1/simulation/run": {
+    "/api/v1/templates/{template_id}/instantiate": {
       "post": {
-        "tags": ["simulation"],
-        "summary": "Run Simulation",
-        "description": "Executes an optimization scenario.\n\nThis endpoint takes a snapshot of demand (defined by SQL) and applies\nuser-defined capacity and constraints to solve the bed allocation problem.\n\nArgs:\n    request: Configuration containing SQL source and capacity map.\n    current_user: Authenticated user.\n\nReturns:\n    ScenarioResult: The calculated assignments.",
-        "operationId": "run_simulation_api_v1_simulation_run_post",
+        "tags": ["templates"],
+        "summary": "Instantiate Template",
+        "description": "Instantiates a widget template on the backend by substituting schema defaults\nand user-supplied parameter values into `sql_template`.\n\nArgs:\n    template_id (UUID): Unique identifier of the template to instantiate.\n    payload (TemplateInstantiateRequest): User-supplied parameter values.\n    db (AsyncSession): Database session.\n    current_user (User): Authenticated user session.\n\nReturns:\n    TemplateInstantiateResponse: Rendered SQL query, title, and recommended visualization.\n\nRaises:\n    HTTPException: 404 if the template does not exist.",
+        "operationId": "instantiate_template_api_v1_templates__template_id__instantiate_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ScenarioRunRequest"
+                "$ref": "#/components/schemas/TemplateInstantiateRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1344,7 +3094,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScenarioResult"
+                  "$ref": "#/components/schemas/TemplateInstantiateResponse"
                 }
               }
             }
@@ -1359,48 +3109,853 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/api/v1/optimization/institutions": {
+      "get": {
+        "tags": ["optimization"],
+        "summary": "Get Optimization Institutions",
+        "description": "Lists all partner hospital institution profiles and their operational baseline parameters.\n\nArgs:\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    list[InstitutionProfileSchema]: Partner hospital profiles.",
+        "operationId": "get_optimization_institutions_api_v1_optimization_institutions_get",
         "security": [
           {
             "OAuth2PasswordBearer": []
           }
-        ]
-      }
-    },
-    "/api/v1/schema/": {
-      "get": {
-        "tags": ["schema"],
-        "summary": "Get Database Schema",
-        "description": "Retrieve the current OLAP database schema (Tables and Columns).\n\nThis endpoint introspects the active DuckDB connection.\nIt is synchronous to ensure FastAPI executes it in a threadpool, preventing\nblocking of the main event loop during database I/O.\n\nArgs:\n    current_user: Authenticated user (required for access).\n\nReturns:\n    List[TableInfo]: A structured list of tables and their column definitions.",
-        "operationId": "get_database_schema_api_v1_schema__get",
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/TableInfo"
-                  },
                   "type": "array",
-                  "title": "Response Get Database Schema Api V1 Schema  Get"
+                  "items": {
+                    "$ref": "#/components/schemas/InstitutionProfileSchema"
+                  },
+                  "title": "Response Get Optimization Institutions Api V1 Optimization Institutions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/api/v1/optimization/models": {
+      "get": {
+        "tags": ["optimization"],
+        "summary": "Get Optimization Model Compendium",
+        "description": "Lists the compendium of out-of-the-box, JAX/TPU fine-tuned, and LiteRT on-device models.\n\nArgs:\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    list[ModelCompendiumEntrySchema]: Supported LLM and LiteRT models.",
+        "operationId": "get_optimization_model_compendium_api_v1_optimization_models_get",
         "security": [
           {
             "OAuth2PasswordBearer": []
           }
-        ]
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelCompendiumEntrySchema"
+                  },
+                  "title": "Response Get Optimization Model Compendium Api V1 Optimization Models Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/quick-actions": {
+      "get": {
+        "tags": ["optimization"],
+        "summary": "Get Optimization Quick Actions",
+        "description": "Lists Quick Action buttons available in the Hospital Optimization Workspace.\n\nArgs:\n    current_user (User): Authenticated hospital user.\n    use_case (str | None): Optional optimization use case filter.\n\nReturns:\n    list[QuickActionDefinitionSchema]: Quick Action button definitions.",
+        "operationId": "get_optimization_quick_actions_api_v1_optimization_quick_actions_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "use_case",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional use case filter",
+              "title": "Use Case"
+            },
+            "description": "Optional use case filter"
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QuickActionDefinitionSchema"
+                  },
+                  "title": "Response Get Optimization Quick Actions Api V1 Optimization Quick Actions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/quick-actions/{action_id}": {
+      "post": {
+        "tags": ["optimization"],
+        "summary": "Execute Optimization Quick Action",
+        "description": "Executes a deterministic Quick Action (`patient_days_by_unit`, `patient_days_by_service`,\n`combined_analysis`, `summary_statistics`, `optimize_service_units`, `smooth_surgical_schedule`,\nor `optimize_nurse_staffing`).\n\nArgs:\n    action_id (str): Quick Action identifier.\n    request (QuickActionExecutionRequest): Institution and use-case request parameters.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    QuickActionExecutionResponse: Tabular rows and optional solved MPAX payload.",
+        "operationId": "execute_optimization_quick_action_api_v1_optimization_quick_actions__action_id__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickActionExecutionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickActionExecutionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/solve": {
+      "post": {
+        "tags": ["optimization"],
+        "summary": "Solve Optimization Stateless",
+        "description": "Solves Use Case 1, Use Case 2, or Use Case 3 statelessly in JAX/MPAX and evaluates\nagainst the JAX Discrete Event Simulation (DES) expert baseline.\n\nArgs:\n    request (OptimizationSolveRequest): Stateless optimization solve payload.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    OptimizationSolutionPayload: Solved assignments/schedule and DES baseline metrics.",
+        "operationId": "solve_optimization_stateless_api_v1_optimization_solve_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimizationSolveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationSolutionPayload"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/sessions": {
+      "post": {
+        "tags": ["optimization"],
+        "summary": "Create Optimization Session",
+        "description": "Creates a new iterative Hospital Optimization session for Use Case 1, 2, or 3.\n\nArgs:\n    payload (OptimizationSessionCreate): Session creation parameters.\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    OptimizationSessionResponse: Created session state with initial MPAX baseline solution.",
+        "operationId": "create_optimization_session_api_v1_optimization_sessions_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimizationSessionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationSessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["optimization"],
+        "summary": "List Optimization Sessions",
+        "description": "Lists all iterative Hospital Optimization sessions owned by the authenticated user.\n\nArgs:\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    list[OptimizationSessionResponse]: User's optimization sessions.",
+        "operationId": "list_optimization_sessions_api_v1_optimization_sessions_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OptimizationSessionResponse"
+                  },
+                  "title": "Response List Optimization Sessions Api V1 Optimization Sessions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/sessions/{session_id}": {
+      "get": {
+        "tags": ["optimization"],
+        "summary": "Get Optimization Session",
+        "description": "Retrieves a specific Hospital Optimization session and its iteration history.\n\nArgs:\n    session_id (str): Target session UUID string.\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    OptimizationSessionResponse: Session state and chronological iteration history.",
+        "operationId": "get_optimization_session_api_v1_optimization_sessions__session_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationSessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["optimization"],
+        "summary": "Delete Optimization Session",
+        "description": "Deletes an iterative Hospital Optimization session owned by the authenticated user.\n\nArgs:\n    session_id (str): Target session UUID string.\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    dict[str, str]: Deletion confirmation dictionary.",
+        "operationId": "delete_optimization_session_api_v1_optimization_sessions__session_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Delete Optimization Session Api V1 Optimization Sessions  Session Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/sessions/{session_id}/iterate": {
+      "post": {
+        "tags": ["optimization"],
+        "summary": "Iterate Optimization Session",
+        "description": "Submits a natural-language prompt or constraint update to an active optimization session,\nsolves the updated JAX/MPAX model, and returns the clinical explanation + DES comparison.\n\nArgs:\n    session_id (str): Target optimization session UUID string.\n    request (OptimizationIterationRequest): Conversational turn request.\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    OptimizationIterationResponse: Completed turn with updated MPAX solution and explanation.",
+        "operationId": "iterate_optimization_session_api_v1_optimization_sessions__session_id__iterate_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimizationIterationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationIterationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/surveys": {
+      "post": {
+        "tags": ["optimization"],
+        "summary": "Submit Optimization Survey",
+        "description": "Submits a qualitative and quantitative UX evaluation survey comparing the self-service\nLLM-MPAX workflow against (A) the manual graduate-student email loop and (B) other hospital tech.\n\nArgs:\n    payload (OptimizationSurveyCreate): Survey submission payload.\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    OptimizationSurveyResponse: Persisted survey record.",
+        "operationId": "submit_optimization_survey_api_v1_optimization_surveys_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimizationSurveyCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationSurveyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/surveys/summary": {
+      "get": {
+        "tags": ["optimization"],
+        "summary": "Get Optimization Evaluation Summary",
+        "description": "Returns aggregated quantitative (DES Expert Baseline gap) and qualitative (User Survey)\nevaluation metrics across all hospital optimization sessions.\n\nArgs:\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    OptimizationEvaluationSummaryResponse: Aggregated quantitative and qualitative metrics.",
+        "operationId": "get_optimization_evaluation_summary_api_v1_optimization_surveys_summary_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationEvaluationSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schema/": {
+      "get": {
+        "tags": ["schema"],
+        "summary": "Get Database Schema",
+        "description": "Retrieves the current OLAP database schema (Tables and Columns).\n\nThis endpoint introspects the active DuckDB connection in a background worker\nthread via `asyncio.to_thread`, preventing blocking of the main event loop.\n\nArgs:\n    current_user (User): Authenticated user (required for access).\n\nReturns:\n    list[TableInfo]: A structured list of tables and their column definitions.",
+        "operationId": "get_database_schema_api_v1_schema__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TableInfo"
+                  },
+                  "title": "Response Get Database Schema Api V1 Schema  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/conversations/": {
       "get": {
         "tags": ["chat"],
         "summary": "List Conversations",
-        "description": "List recent conversations for the current user.",
+        "description": "Lists recent conversations for the current user.\n\nArgs:\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    limit (int): Maximum number of conversations to return.\n    offset (int): Pagination offset.\n\nReturns:\n    list[Conversation]: Ordered list of conversations.",
         "operationId": "list_conversations_api_v1_conversations__get",
         "security": [
           {
@@ -1427,6 +3982,24 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "default": 0,
               "title": "Offset"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1459,11 +4032,31 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "post": {
         "tags": ["chat"],
         "summary": "Create Conversation",
-        "description": "Create a new conversation and optionally seed the first message.",
+        "description": "Creates a new conversation and optionally seeds the first message.\n\nArgs:\n    payload (ConversationCreate): Conversation creation payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Conversation: Created conversation with messages and candidates.",
         "operationId": "create_conversation_api_v1_conversations__post",
         "security": [
           {
             "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "requestBody": {
@@ -1504,7 +4097,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "put": {
         "tags": ["chat"],
         "summary": "Update Conversation",
-        "description": "Update the title for an existing conversation.",
+        "description": "Updates the title for an existing conversation.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    payload (ConversationUpdate): Title update payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Conversation: Updated conversation model.",
         "operationId": "update_conversation_api_v1_conversations__conversation_id__put",
         "security": [
           {
@@ -1521,6 +4114,24 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "format": "uuid",
               "title": "Conversation Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "requestBody": {
@@ -1559,7 +4170,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "delete": {
         "tags": ["chat"],
         "summary": "Delete Conversation",
-        "description": "Delete a conversation and its messages.",
+        "description": "Deletes a conversation and its messages.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.",
         "operationId": "delete_conversation_api_v1_conversations__conversation_id__delete",
         "security": [
           {
@@ -1576,6 +4187,24 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "format": "uuid",
               "title": "Conversation Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1599,7 +4228,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "get": {
         "tags": ["chat"],
         "summary": "Get Messages",
-        "description": "Return the ordered message history for a conversation.",
+        "description": "Returns the ordered message history for a conversation.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    list[Message]: Ordered messages with candidates.",
         "operationId": "get_messages_api_v1_conversations__conversation_id__messages_get",
         "security": [
           {
@@ -1616,6 +4245,24 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "format": "uuid",
               "title": "Conversation Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1648,7 +4295,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "post": {
         "tags": ["chat"],
         "summary": "Send Message",
-        "description": "Append a user message and generate assistant candidates.",
+        "description": "Appends a user message and generates assistant candidates.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    payload (MessageCreate): User message payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Message: Generated assistant message with candidates.",
         "operationId": "send_message_api_v1_conversations__conversation_id__messages_post",
         "security": [
           {
@@ -1665,6 +4312,24 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "format": "uuid",
               "title": "Conversation Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "requestBody": {
@@ -1705,7 +4370,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
       "post": {
         "tags": ["chat"],
         "summary": "Vote Candidate",
-        "description": "Records a user's vote for a specific generated candidate.\n\nThis selects the chosen candidate by its ID (or matching SQL hash), sets its `is_selected`\nflag to True, and promotes its text and SQL contents to the parent Message object.",
+        "description": "Records a user's vote for a specific generated candidate.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    message_id (UUID): Target assistant message UUID.\n    payload (MessageVoteRequest): Winning candidate UUID payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Message: Updated parent assistant message with selected candidate promoted.",
         "operationId": "vote_candidate_api_v1_conversations__conversation_id__messages__message_id__vote_post",
         "security": [
           {
@@ -1732,6 +4397,24 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "format": "uuid",
               "title": "Message Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "requestBody": {
@@ -1768,11 +4451,728 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         }
       }
     },
+    "/api/v1/conversations/stream/{conversation_id}": {
+      "get": {
+        "tags": ["chat"],
+        "summary": "Stream Conversation Tokens",
+        "description": "Server-Sent Events (SSE) endpoint streaming real-time LLM token generation.\n\nArgs:\n    conversation_id (UUID): The conversation ID context.\n    db (AsyncSession): Database session.\n    current_user (User): Authenticated user owning the conversation.\n    model_id (str | None): Targeted model ID.\n\nReturns:\n    StreamingResponse: Text/event-stream containing incremental tokens.",
+        "operationId": "stream_conversation_tokens_api_v1_conversations_stream__conversation_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/": {
+      "get": {
+        "tags": ["chat"],
+        "summary": "List Conversations",
+        "description": "Lists recent conversations for the current user.\n\nArgs:\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    limit (int): Maximum number of conversations to return.\n    offset (int): Pagination offset.\n\nReturns:\n    list[Conversation]: Ordered list of conversations.",
+        "operationId": "list_conversations_api_v1_chat__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConversationResponse"
+                  },
+                  "title": "Response List Conversations Api V1 Chat  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["chat"],
+        "summary": "Create Conversation",
+        "description": "Creates a new conversation and optionally seeds the first message.\n\nArgs:\n    payload (ConversationCreate): Conversation creation payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Conversation: Created conversation with messages and candidates.",
+        "operationId": "create_conversation_api_v1_chat__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{conversation_id}": {
+      "put": {
+        "tags": ["chat"],
+        "summary": "Update Conversation",
+        "description": "Updates the title for an existing conversation.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    payload (ConversationUpdate): Title update payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Conversation: Updated conversation model.",
+        "operationId": "update_conversation_api_v1_chat__conversation_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["chat"],
+        "summary": "Delete Conversation",
+        "description": "Deletes a conversation and its messages.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.",
+        "operationId": "delete_conversation_api_v1_chat__conversation_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{conversation_id}/messages": {
+      "get": {
+        "tags": ["chat"],
+        "summary": "Get Messages",
+        "description": "Returns the ordered message history for a conversation.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    list[Message]: Ordered messages with candidates.",
+        "operationId": "get_messages_api_v1_chat__conversation_id__messages_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MessageResponse"
+                  },
+                  "title": "Response Get Messages Api V1 Chat  Conversation Id  Messages Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["chat"],
+        "summary": "Send Message",
+        "description": "Appends a user message and generates assistant candidates.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    payload (MessageCreate): User message payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Message: Generated assistant message with candidates.",
+        "operationId": "send_message_api_v1_chat__conversation_id__messages_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{conversation_id}/messages/{message_id}/vote": {
+      "post": {
+        "tags": ["chat"],
+        "summary": "Vote Candidate",
+        "description": "Records a user's vote for a specific generated candidate.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    message_id (UUID): Target assistant message UUID.\n    payload (MessageVoteRequest): Winning candidate UUID payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Message: Updated parent assistant message with selected candidate promoted.",
+        "operationId": "vote_candidate_api_v1_chat__conversation_id__messages__message_id__vote_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Message Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageVoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/stream/{conversation_id}": {
+      "get": {
+        "tags": ["chat"],
+        "summary": "Stream Conversation Tokens",
+        "description": "Server-Sent Events (SSE) endpoint streaming real-time LLM token generation.\n\nArgs:\n    conversation_id (UUID): The conversation ID context.\n    db (AsyncSession): Database session.\n    current_user (User): Authenticated user owning the conversation.\n    model_id (str | None): Targeted model ID.\n\nReturns:\n    StreamingResponse: Text/event-stream containing incremental tokens.",
+        "operationId": "stream_conversation_tokens_api_v1_chat_stream__conversation_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/alerts": {
+      "get": {
+        "tags": ["analytics"],
+        "summary": "Get Capacity Alerts",
+        "description": "Evaluates real-time DuckDB hospital census against configured AlertRules.\n\nArgs:\n    current_user (User): Authenticated user requesting alerts.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    list[BedCapacityAlert]: List of active capacity alerts exceeding configured thresholds.",
+        "operationId": "get_capacity_alerts_api_v1_analytics_alerts_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BedCapacityAlert"
+                  },
+                  "title": "Response Get Capacity Alerts Api V1 Analytics Alerts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/analytics/llm": {
       "get": {
         "tags": ["analytics"],
         "summary": "List Llm Outputs",
-        "description": "Returns a flattened view of chat arena candidates, including:\n- user query (nearest prior user message)\n- LLM candidate output and SQL snippet\n- user selection (is_selected)",
+        "description": "Returns a flattened, database-paginated (`UNION ALL`) view of chat, AI, and MPAX Arena candidates.\n\nArgs:\n    current_user (User): Authenticated user requesting LLM telemetry.\n    db (AsyncSession): Active transactional database session.\n    limit (int): Maximum number of combined rows to return.\n    offset (int): Number of rows to skip before returning results.\n\nReturns:\n    list[LlmOutputAnalyticsRow]: Combined and chronologically sorted LLM candidate telemetry rows.",
         "operationId": "list_llm_outputs_api_v1_analytics_llm_get",
         "security": [
           {
@@ -1799,6 +5199,24 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               "default": 0,
               "title": "Offset"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1829,12 +5247,491 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         }
       }
     },
+    "/api/v1/analytics/alert-rules/": {
+      "get": {
+        "tags": ["alert-rules"],
+        "summary": "List Alert Rules",
+        "description": "Lists all configured hospital capacity alert rules.\n\nArgs:\n    current_user (User): Authenticated requesting user.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    list[AlertRule]: List of active and inactive alert rules.",
+        "operationId": "list_alert_rules_api_v1_analytics_alert_rules__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AlertRuleResponse"
+                  },
+                  "title": "Response List Alert Rules Api V1 Analytics Alert Rules  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["alert-rules"],
+        "summary": "Create Alert Rule",
+        "description": "Creates a new clinical alert rule with configured unit and occupancy threshold.\n\nArgs:\n    request (AlertRuleCreate): Creation payload with category, threshold, and severity.\n    current_user (User): Authenticated user.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    AlertRule: The newly created and persisted alert rule.",
+        "operationId": "create_alert_rule_api_v1_analytics_alert_rules__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertRuleCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertRuleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/alert-rules": {
+      "get": {
+        "tags": ["alert-rules"],
+        "summary": "List Alert Rules",
+        "description": "Lists all configured hospital capacity alert rules.\n\nArgs:\n    current_user (User): Authenticated requesting user.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    list[AlertRule]: List of active and inactive alert rules.",
+        "operationId": "list_alert_rules_api_v1_analytics_alert_rules_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AlertRuleResponse"
+                  },
+                  "title": "Response List Alert Rules Api V1 Analytics Alert Rules Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["alert-rules"],
+        "summary": "Create Alert Rule",
+        "description": "Creates a new clinical alert rule with configured unit and occupancy threshold.\n\nArgs:\n    request (AlertRuleCreate): Creation payload with category, threshold, and severity.\n    current_user (User): Authenticated user.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    AlertRule: The newly created and persisted alert rule.",
+        "operationId": "create_alert_rule_api_v1_analytics_alert_rules_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertRuleCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertRuleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/alert-rules/{rule_id}": {
+      "get": {
+        "tags": ["alert-rules"],
+        "summary": "Get Alert Rule",
+        "description": "Retrieves a single clinical alert rule by its UUID.\n\nArgs:\n    rule_id (UUID): Unique alert rule identifier.\n    current_user (User): Authenticated user.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    AlertRule: The requested alert rule entity.\n\nRaises:\n    HTTPException: 404 if the rule does not exist.",
+        "operationId": "get_alert_rule_api_v1_analytics_alert_rules__rule_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Rule Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertRuleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["alert-rules"],
+        "summary": "Update Alert Rule",
+        "description": "Updates an existing clinical alert rule with partial attribute modifications.\n\nArgs:\n    rule_id (UUID): Unique alert rule identifier.\n    request (AlertRuleUpdate): Attributes to update.\n    current_user (User): Authenticated user.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    AlertRule: The updated alert rule entity.\n\nRaises:\n    HTTPException: 404 if the rule does not exist.",
+        "operationId": "update_alert_rule_api_v1_analytics_alert_rules__rule_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Rule Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertRuleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertRuleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["alert-rules"],
+        "summary": "Delete Alert Rule",
+        "description": "Deletes an existing clinical alert rule by UUID.\n\nArgs:\n    rule_id (UUID): Unique alert rule identifier to remove.\n    current_user (User): Authenticated user.\n    db (AsyncSession): PostgreSQL async database session.\n\nRaises:\n    HTTPException: 404 if the rule does not exist.",
+        "operationId": "delete_alert_rule_api_v1_analytics_alert_rules__rule_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Rule Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/settings": {
       "get": {
         "tags": ["admin"],
         "summary": "Read Admin Settings",
-        "description": "Get system-wide admin settings like API keys and visible models.",
+        "description": "Get system-wide admin settings like API keys and visible models.\n\nArgs:\n    db (AsyncSession): Active PostgreSQL session.\n    current_user (User): Authenticated administrator.\n\nReturns:\n    AdminSettingsResponse: Current admin settings state.",
         "operationId": "read_admin_settings_api_v1_admin_settings_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1845,28 +5742,74 @@ Below is the OpenAPI specification extracted from the current backend. You can u
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       },
       "put": {
         "tags": ["admin"],
         "summary": "Write Admin Settings",
-        "description": "Update system-wide admin settings like API keys and visible models.",
+        "description": "Update system-wide admin settings like API keys and visible models.\n\nArgs:\n    request (AdminSettingsUpdateRequest): Updated admin settings payload.\n    db (AsyncSession): Active PostgreSQL session.\n    current_user (User): Authenticated administrator.\n\nReturns:\n    AdminSettingsResponse: Updated admin settings state.",
         "operationId": "write_admin_settings_api_v1_admin_settings_put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AdminSettingsUpdateRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1889,12 +5832,867 @@ Below is the OpenAPI specification extracted from the current backend. You can u
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/api/v1/admin/llm/test-connection": {
+      "post": {
+        "tags": ["admin"],
+        "summary": "Test Llm Connection",
+        "description": "Tests connectivity and optional 1-token smoke inference for an LLM provider or model configuration.\n\nArgs:\n    request (LlmConnectionTestRequest): Provider, model, and optional override credentials.\n    db (AsyncSession): Active PostgreSQL session.\n    current_user (User): Authenticated administrator.\n\nReturns:\n    LlmProviderHealthResponse: Connection health status, latency, and remediation steps.",
+        "operationId": "test_llm_connection_api_v1_admin_llm_test_connection_post",
         "security": [
           {
             "OAuth2PasswordBearer": []
           }
-        ]
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LlmConnectionTestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmProviderHealthResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/": {
+      "get": {
+        "tags": ["admin-users"],
+        "summary": "List Users",
+        "description": "Lists hospital platform users with optional role filtering and email search.\n\nArgs:\n    db (AsyncSession): PostgreSQL async database session.\n    current_user (User): Requesting administrator user.\n    limit (int): Pagination batch size limit (1 - 200). Defaults to 50.\n    offset (int): Pagination record offset. Defaults to 0.\n    role (str | None): Optional clinical role filter. Defaults to None.\n    search (str | None): Optional email search substring. Defaults to None.\n\nReturns:\n    list[User]: Filtered list of registered user profiles.",
+        "operationId": "list_users_api_v1_admin_users__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  },
+                  "title": "Response List Users Api V1 Admin Users  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "tags": ["admin-users"],
+        "summary": "List Users",
+        "description": "Lists hospital platform users with optional role filtering and email search.\n\nArgs:\n    db (AsyncSession): PostgreSQL async database session.\n    current_user (User): Requesting administrator user.\n    limit (int): Pagination batch size limit (1 - 200). Defaults to 50.\n    offset (int): Pagination record offset. Defaults to 0.\n    role (str | None): Optional clinical role filter. Defaults to None.\n    search (str | None): Optional email search substring. Defaults to None.\n\nReturns:\n    list[User]: Filtered list of registered user profiles.",
+        "operationId": "list_users_api_v1_admin_users_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  },
+                  "title": "Response List Users Api V1 Admin Users Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{user_id}/role": {
+      "put": {
+        "tags": ["admin-users"],
+        "summary": "Update User Role",
+        "description": "Updates the clinical or administrative role assignment for a target user.\n\nArgs:\n    user_id (UUID): Target user identifier.\n    payload (UserRoleUpdate): Desired new clinical role string.\n    db (AsyncSession): PostgreSQL async database session.\n    current_user (User): Requesting administrator user.\n\nReturns:\n    User: The updated user profile entity.\n\nRaises:\n    HTTPException: 400 if the role is invalid, 404 if the user is not found.",
+        "operationId": "update_user_role_api_v1_admin_users__user_id__role_put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRoleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{user_id}/status": {
+      "put": {
+        "tags": ["admin-users"],
+        "summary": "Update User Status",
+        "description": "Activates or suspends a hospital user platform account.\n\nPrevents administrators from suspending their own active account.\n\nArgs:\n    user_id (UUID): Target user identifier.\n    payload (UserStatusUpdate): New active flag state.\n    db (AsyncSession): PostgreSQL async database session.\n    current_user (User): Requesting administrator user.\n\nReturns:\n    User: The updated user profile entity.\n\nRaises:\n    HTTPException: 400 if administrator attempts self-suspension, 404 if not found.",
+        "operationId": "update_user_status_api_v1_admin_users__user_id__status_put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserStatusUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/benchmarks/sql": {
+      "get": {
+        "tags": ["benchmarks"],
+        "summary": "Get Sql Benchmarks",
+        "description": "Returns the gold standard text-to-SQL benchmarks.\n\nReturns:\n    list[BenchmarkScenarioSchema]: Parsed benchmark list from benchmark_gold.json.",
+        "operationId": "get_sql_benchmarks_api_v1_benchmarks_sql_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BenchmarkScenarioSchema"
+                  },
+                  "type": "array",
+                  "title": "Response Get Sql Benchmarks Api V1 Benchmarks Sql Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/benchmarks/optimization": {
+      "get": {
+        "tags": ["benchmarks"],
+        "summary": "Get Optimization Benchmarks",
+        "description": "Returns the gold-standard Hospital Operations Optimization benchmarks across\nUse Case 1 (`service_unit`), Use Case 2 (`surgical_scheduling`), and Use Case 3 (`staffing_optimization`).\n\nReturns:\n    list[BenchmarkScenarioSchema]: Parsed optimization benchmark scenario items.",
+        "operationId": "get_optimization_benchmarks_api_v1_benchmarks_optimization_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BenchmarkScenarioSchema"
+                  },
+                  "type": "array",
+                  "title": "Response Get Optimization Benchmarks Api V1 Benchmarks Optimization Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/benchmarks/progress": {
+      "post": {
+        "tags": ["benchmarks"],
+        "summary": "Post Benchmark Progress",
+        "description": "Updates the benchmark progress telemetry state (Admin only).\n\nArgs:\n    payload (BenchmarkProgressUpdateRequest): Telemetry progress fields.\n    current_user (User): Authenticated administrator.\n\nReturns:\n    BenchmarkTelemetryStateDict: Updated telemetry state snapshot.",
+        "operationId": "post_benchmark_progress_api_v1_benchmarks_progress_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BenchmarkProgressUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchmarkTelemetryStateDict"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["benchmarks"],
+        "summary": "Stream Benchmark Progress",
+        "description": "Server-Sent Events (SSE) endpoint providing real-time telemetry on active benchmark runs.\n\nArgs:\n    poll_interval_seconds (float): Optional delay after emitting a telemetry frame.\n\nReturns:\n    StreamingResponse: SSE stream emitting live benchmark progress events.",
+        "operationId": "stream_benchmark_progress_api_v1_benchmarks_progress_get",
+        "parameters": [
+          {
+            "name": "poll_interval_seconds",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 0.0,
+              "title": "Poll Interval Seconds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/health": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Check aggregate system health and database readiness",
+        "description": "Queries live health states for PostgreSQL, DuckDB, data ingestion, templates, and LLM configuration.\nReturns HTTP 503 Service Unavailable with the full SystemHealthResponse payload whenever\n`summary.status != \"healthy\"`.\n\nArgs:\n    response (Response): FastAPI response object for setting status code 503 when unhealthy.\n    strict (bool): Whether to require populated datasets and templates.\n\nReturns:\n    SystemHealthResponse: Consolidated system health model.",
+        "operationId": "get_system_health_api_v1_system_health_get",
+        "parameters": [
+          {
+            "name": "strict",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "If true, requires clinical datasets and templates to be populated.",
+              "default": true,
+              "title": "Strict"
+            },
+            "description": "If true, requires clinical datasets and templates to be populated."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemHealthResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/diagnostics": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Detailed system diagnostics and troubleshooting guides",
+        "description": "Provides in-depth diagnostics, environment checks, and actionable troubleshooting guides.\nRequires an authenticated user session.\n\nArgs:\n    response (Response): FastAPI response object for setting no-store cache headers.\n    current_user (User): The authenticated user making the request.\n\nReturns:\n    SystemDiagnosticsResponse: Detailed diagnostic summary with copyable fix commands.",
+        "operationId": "get_system_diagnostics_api_v1_system_diagnostics_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemDiagnosticsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/reingest": {
+      "post": {
+        "tags": ["system"],
+        "summary": "Trigger manual CSV re-ingestion into DuckDB",
+        "description": "Forces reload of all CSV datasets from the data folder into DuckDB tables.\nRequires administrative privileges.\n\nArgs:\n    current_user (User): The authenticated administrative user.\n\nReturns:\n    ReingestResponse: ReingestResponse with updated table row counts.",
+        "operationId": "trigger_reingest_api_v1_system_reingest_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReingestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/": {
@@ -1938,11 +6736,55 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             },
             "type": "array",
             "title": "Visible Models"
+          },
+          "configured_models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Configured Models"
+          },
+          "ollama_api_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ollama Api Base"
+          },
+          "gemma4_sql_enabled": {
+            "type": "boolean",
+            "title": "Gemma4 Sql Enabled",
+            "default": true
+          },
+          "gemma4_sql_backend": {
+            "type": "string",
+            "title": "Gemma4 Sql Backend",
+            "default": "mlx"
+          },
+          "gemma4_sql_model_name": {
+            "type": "string",
+            "title": "Gemma4 Sql Model Name",
+            "default": "google/gemma-4-sql-9b"
+          },
+          "gemma4_sql_api_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemma4 Sql Api Base"
           }
         },
         "type": "object",
-        "required": ["api_keys", "visible_models"],
-        "title": "AdminSettingsResponse"
+        "title": "AdminSettingsResponse",
+        "description": "Response schema containing the currently configured admin settings.\n\nAttributes:\n    api_keys (dict[str, str]): Map of provider slugs to configured API keys.\n    visible_models (list[str]): List of visible model IDs.\n    configured_models (list[str]): Additional `provider/model` or `provider:model` entries registered for `any-llm`.\n    ollama_api_base (str | None): Optional custom Ollama base URL override.\n    gemma4_sql_enabled (bool): Whether the `gemma-4-sql` text-to-SQL engine is enabled.\n    gemma4_sql_backend (str): Selected `gemma-4-sql` backend (`'mlx'`, `'jax'`, `'pytorch'`, `'keras'`, `'maxtext'`, `'api'`).\n    gemma4_sql_model_name (str): Target `gemma-4-sql` model identifier.\n    gemma4_sql_api_base (str | None): Optional `gemma-4-sql serve` HTTP endpoint URL."
       },
       "AdminSettingsUpdateRequest": {
         "properties": {
@@ -1959,11 +6801,530 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             },
             "type": "array",
             "title": "Visible Models"
+          },
+          "configured_models": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Configured Models"
+          },
+          "ollama_api_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ollama Api Base"
+          },
+          "gemma4_sql_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemma4 Sql Enabled"
+          },
+          "gemma4_sql_backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemma4 Sql Backend"
+          },
+          "gemma4_sql_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemma4 Sql Model Name"
+          },
+          "gemma4_sql_api_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemma4 Sql Api Base"
           }
         },
         "type": "object",
-        "required": ["api_keys", "visible_models"],
-        "title": "AdminSettingsUpdateRequest"
+        "title": "AdminSettingsUpdateRequest",
+        "description": "Request schema for updating admin settings.\n\nAttributes:\n    api_keys (dict[str, str]): Map of provider slugs to configured API keys.\n    visible_models (list[str]): List of visible model IDs.\n    configured_models (list[str] | None): Optional list of `any-llm` model identifiers (`provider/model`).\n    ollama_api_base (str | None): Optional custom Ollama base URL override.\n    gemma4_sql_enabled (bool | None): Optional toggle for `gemma-4-sql`.\n    gemma4_sql_backend (str | None): Optional `gemma-4-sql` backend override.\n    gemma4_sql_model_name (str | None): Optional `gemma-4-sql` model identifier override.\n    gemma4_sql_api_base (str | None): Optional `gemma-4-sql serve` endpoint override."
+      },
+      "AlertRuleCreate": {
+        "properties": {
+          "unit_category": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Unit Category",
+            "description": "Unit or department category"
+          },
+          "threshold_percentage": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Threshold Percentage",
+            "description": "Trigger occupancy percentage"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/AlertSeverity",
+            "description": "Alert severity level",
+            "default": "WARNING"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "Active status flag",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": ["unit_category", "threshold_percentage"],
+        "title": "AlertRuleCreate",
+        "description": "Payload for creating a new clinical alert rule."
+      },
+      "AlertRuleResponse": {
+        "properties": {
+          "unit_category": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Unit Category",
+            "description": "Unit or department category"
+          },
+          "threshold_percentage": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Threshold Percentage",
+            "description": "Trigger occupancy percentage"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/AlertSeverity",
+            "description": "Alert severity level",
+            "default": "WARNING"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "Active status flag",
+            "default": true
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unit_category",
+          "threshold_percentage",
+          "id",
+          "created_at"
+        ],
+        "title": "AlertRuleResponse",
+        "description": "Response model representing a persisted clinical alert rule.\n\nAttributes:\n    id (UUID): Unique rule identifier.\n    created_at (datetime): Rule registration timestamp."
+      },
+      "AlertRuleUpdate": {
+        "properties": {
+          "unit_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Category"
+          },
+          "threshold_percentage": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Percentage"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlertSeverity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "AlertRuleUpdate",
+        "description": "Payload for updating an existing clinical alert rule with partial attributes.\n\nAttributes:\n    unit_category (str | None): Updated unit or department category.\n    threshold_percentage (float | None): Updated trigger percentage.\n    severity (AlertSeverity | None): Updated severity classification.\n    is_active (bool | None): Updated active evaluation flag."
+      },
+      "AlertSeverity": {
+        "type": "string",
+        "enum": ["INFO", "WARNING", "CRITICAL"],
+        "title": "AlertSeverity",
+        "description": "Severity classification for bed occupancy alerts."
+      },
+      "BedCapacityAlert": {
+        "properties": {
+          "unit_category": {
+            "type": "string",
+            "title": "Unit Category"
+          },
+          "current_census": {
+            "type": "integer",
+            "title": "Current Census"
+          },
+          "max_capacity": {
+            "type": "integer",
+            "title": "Max Capacity"
+          },
+          "occupancy_percentage": {
+            "type": "number",
+            "title": "Occupancy Percentage"
+          },
+          "threshold_percentage": {
+            "type": "number",
+            "title": "Threshold Percentage"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlertSeverity"
+              },
+              {
+                "type": "string",
+                "enum": ["INFO", "WARNING", "CRITICAL"]
+              }
+            ],
+            "title": "Severity"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unit_category",
+          "current_census",
+          "max_capacity",
+          "occupancy_percentage",
+          "threshold_percentage",
+          "severity",
+          "message",
+          "timestamp"
+        ],
+        "title": "BedCapacityAlert",
+        "description": "Real-time capacity alert triggered when unit occupancy exceeds safe thresholds."
+      },
+      "BenchmarkProgressUpdateRequest": {
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "completed": {
+            "type": "integer",
+            "title": "Completed"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "current_model": {
+            "type": "string",
+            "title": "Current Model"
+          },
+          "current_status": {
+            "type": "string",
+            "title": "Current Status"
+          },
+          "eta_seconds": {
+            "type": "integer",
+            "title": "Eta Seconds",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "active",
+          "completed",
+          "total",
+          "current_model",
+          "current_status"
+        ],
+        "title": "BenchmarkProgressUpdateRequest",
+        "description": "Request payload for updating active benchmark execution progress telemetry."
+      },
+      "BenchmarkScenarioSchema": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "use_case": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Case"
+          },
+          "institution_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Id"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          },
+          "gold_sql": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gold Sql"
+          },
+          "complexity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complexity"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario"
+          },
+          "expected_constraints_json": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expert_baseline_metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expert Baseline Metrics"
+          },
+          "demand_data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JsonObject-Output"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demand Data"
+          },
+          "base_capacity": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Capacity"
+          },
+          "expected_metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Metrics"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "BenchmarkScenarioSchema",
+        "description": "Strongly typed Pydantic schema for a Text-to-SQL or Hospital Optimization benchmark scenario entry.\n\nAttributes:\n    id (str | None): Optional scenario UUID or slug string.\n    use_case (str | None): Optimization use case (`'service_unit'`, `'surgical_scheduling'`, `'staffing_optimization'`).\n    institution_id (str | None): Partner hospital profile identifier.\n    theme (str | None): Analytical or clinical optimization theme name.\n    question (str | None): Natural language clinical question (SQL benchmark).\n    gold_sql (str | None): Ground-truth DuckDB SQL query (SQL benchmark).\n    complexity (str | None): Complexity tier (`'Low'`, `'Medium'`, `'High'`, `'Easy'`, `'Hard'`).\n    prompt (str | None): Natural language scenario prompt (Optimization benchmark).\n    scenario (str | None): Optional scenario identifier or summary label.\n    expected_constraints_json (JsonObject | None): Gold-standard extracted constraint payload.\n    expert_baseline_metrics (dict[str, float] | None): Expert-attained DES baseline metrics for scoring.\n    demand_data (list[JsonObject] | None): Optional clinical service demand objects.\n    base_capacity (dict[str, float] | None): Optional unit capacity dictionary.\n    expected_metrics (dict[str, float] | None): Optional expected metrics dictionary."
+      },
+      "BenchmarkTelemetryStateDict": {
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "completed": {
+            "type": "integer",
+            "title": "Completed"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "current_model": {
+            "type": "string",
+            "title": "Current Model"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "eta_seconds": {
+            "type": "integer",
+            "title": "Eta Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "active",
+          "completed",
+          "total",
+          "current_model",
+          "status",
+          "eta_seconds"
+        ],
+        "title": "BenchmarkTelemetryStateDict",
+        "description": "Typed dictionary representing real-time benchmark execution progress state.\n\nAttributes:\n    active (bool): Whether a benchmark run is currently executing.\n    completed (int): Number of benchmark scenarios completed.\n    total (int): Total number of scenarios in the test matrix.\n    current_model (str): Currently evaluated LLM model tag.\n    status (str): Current execution phase description.\n    eta_seconds (int): Estimated remaining seconds to completion."
       },
       "Body_login_access_token_api_v1_auth_login_post": {
         "properties": {
@@ -2061,6 +7422,27 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             ],
             "title": "Message",
             "description": "Initial message to kickstart the chat."
+          },
+          "target_models": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Models",
+            "description": "Optional list of model IDs to query."
+          },
+          "auto_execute_sql": {
+            "type": "boolean",
+            "title": "Auto Execute Sql",
+            "description": "Whether to automatically execute generated SQL against read-only DuckDB.",
+            "default": true
           }
         },
         "type": "object",
@@ -2195,6 +7577,11 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "format": "uuid",
             "title": "Owner Id"
           },
+          "permission_level": {
+            "type": "string",
+            "title": "Permission Level",
+            "default": "OWNER"
+          },
           "widgets": {
             "items": {
               "$ref": "#/components/schemas/WidgetResponse"
@@ -2207,7 +7594,365 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         "type": "object",
         "required": ["name", "id", "owner_id"],
         "title": "DashboardResponse",
-        "description": "API Response model for a Dashboard.\nIncludes the nested list of Widgets."
+        "description": "API Response model for a Dashboard.\nIncludes the nested list of Widgets and permission level."
+      },
+      "DashboardShareCreate": {
+        "properties": {
+          "user_email": {
+            "type": "string",
+            "title": "User Email"
+          },
+          "permission_level": {
+            "type": "string",
+            "title": "Permission Level",
+            "default": "VIEW"
+          }
+        },
+        "type": "object",
+        "required": ["user_email"],
+        "title": "DashboardShareCreate",
+        "description": "Payload for sharing a dashboard with another user by email."
+      },
+      "DashboardShareResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "dashboard_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Dashboard Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "user_email": {
+            "type": "string",
+            "title": "User Email"
+          },
+          "permission_level": {
+            "type": "string",
+            "title": "Permission Level"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "dashboard_id",
+          "user_id",
+          "user_email",
+          "permission_level"
+        ],
+        "title": "DashboardShareResponse",
+        "description": "API Response model for an active dashboard share."
+      },
+      "DataHealthSchema": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Dataset readiness status: ready, empty, or critical.",
+            "default": "ready"
+          },
+          "table_count": {
+            "type": "integer",
+            "title": "Table Count",
+            "description": "Total number of clinical dataset tables.",
+            "default": 0
+          },
+          "tables": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tables",
+            "description": "List of available clinical dataset tables."
+          },
+          "has_default_data": {
+            "type": "boolean",
+            "title": "Has Default Data",
+            "description": "True if default hospital_data.csv was found."
+          },
+          "fallback_generated": {
+            "type": "boolean",
+            "title": "Fallback Generated",
+            "description": "True if synthetic fallback sample data was generated."
+          },
+          "missing_files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Files",
+            "description": "List of expected files not found."
+          },
+          "row_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Row Counts",
+            "description": "Row count per ingested dataset."
+          }
+        },
+        "type": "object",
+        "required": ["has_default_data", "fallback_generated"],
+        "title": "DataHealthSchema",
+        "description": "Schema for clinical dataset health and availability."
+      },
+      "DatabaseSummarySchema": {
+        "properties": {
+          "postgres": {
+            "type": "boolean",
+            "title": "Postgres",
+            "description": "True if PostgreSQL is connected and reachable.",
+            "default": true
+          },
+          "duckdb": {
+            "type": "boolean",
+            "title": "Duckdb",
+            "description": "True if DuckDB analytics storage is ready.",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "DatabaseSummarySchema",
+        "description": "Schema for boolean connectivity summary across PostgreSQL and DuckDB."
+      },
+      "DesEvaluationSummary": {
+        "properties": {
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case"
+          },
+          "replications": {
+            "type": "integer",
+            "title": "Replications",
+            "default": 128
+          },
+          "horizon_days": {
+            "type": "integer",
+            "title": "Horizon Days",
+            "default": 180
+          },
+          "overall_expert_gap_pct": {
+            "type": "number",
+            "title": "Overall Expert Gap Pct"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/ExpertBaselineMetricItem"
+            },
+            "type": "array",
+            "title": "Metrics"
+          },
+          "propensity_los_impact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PropensityLosImpactSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "postop_mean_to_median_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postop Mean To Median Ratio"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["use_case", "overall_expert_gap_pct", "metrics"],
+        "title": "DesEvaluationSummary",
+        "description": "JAX Discrete Event Simulation (DES) evaluation summary comparing the user's MPAX solution\nagainst the manual hospital baseline and the expert-attained baseline.\n\nAttributes:\n    use_case (OptimizationUseCase): Evaluated use case.\n    replications (int): Number of vectorized JAX Monte Carlo DES trajectories simulated.\n    horizon_days (int): Simulated operational horizon in days.\n    overall_expert_gap_pct (float): Relative optimality gap (%) vs. the expert baseline (0% = matches expert).\n    metrics (list[ExpertBaselineMetricItem]): Breakdown of primary clinical and financial metrics.\n    propensity_los_impact (PropensityLosImpactSchema | None): Propensity-matched LOS estimate (for Use Case 1).\n    postop_mean_to_median_ratio (float | None): Post-op admission tail ratio (for Use Case 2)."
+      },
+      "DiagnosticWarningSchema": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Unique code identifying the warning category."
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Human-readable warning message."
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity",
+            "description": "Severity classification (e.g., info, warning, critical)."
+          },
+          "remediation": {
+            "type": "string",
+            "title": "Remediation",
+            "description": "Recommended troubleshooting action."
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp",
+            "description": "ISO timestamp when warning was recorded."
+          }
+        },
+        "type": "object",
+        "required": ["code", "message", "severity", "remediation", "timestamp"],
+        "title": "DiagnosticWarningSchema",
+        "description": "Schema for diagnostic warning items."
+      },
+      "DuckDbHealthSchema": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Storage and query engine status (e.g. ready, error)."
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path",
+            "description": "Database file path."
+          },
+          "tables": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Tables",
+            "description": "Map of table names to row counts."
+          },
+          "total_tables": {
+            "type": "integer",
+            "title": "Total Tables",
+            "description": "Total number of registered analytics tables.",
+            "default": 0
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Error message if storage validation failed."
+          }
+        },
+        "type": "object",
+        "required": ["status"],
+        "title": "DuckDbHealthSchema",
+        "description": "Schema for DuckDB analytics engine status."
+      },
+      "ErrorExecutionPayload": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "error",
+            "title": "Kind",
+            "default": "error"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SqlRow"
+                    },
+                    {
+                      "$ref": "#/components/schemas/JsonValue-Output"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "$ref": "#/components/schemas/JsonValue-Output"
+              }
+            ],
+            "title": "Data"
+          },
+          "columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Columns"
+          },
+          "generated_sql": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated Sql"
+          },
+          "processor_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processor Used"
+          },
+          "natural_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Natural Text"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": ["error"],
+        "title": "ErrorExecutionPayload",
+        "description": "Strongly typed Pydantic model for a widget execution error payload.\n\nAttributes:\n    kind (Literal[\"error\"]): Discriminator tag identifying an execution error payload.\n    error (str): Human-readable execution error message.\n    data (list[SqlRow | JsonValue] | JsonValue): Optional empty data array for client compatibility.\n    columns (list[str] | None): Optional empty columns array for client compatibility.\n    generated_sql (str | None): Optional generated SQL snippet if available.\n    processor_used (str | None): Optional processor identifier used.\n    natural_text (str | None): Optional natural language input processed."
       },
       "ExperimentResponse": {
         "properties": {
@@ -2256,6 +8001,107 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         "title": "ExperimentResponse",
         "description": "Return schema containing the UUID and list of anonymous candidates."
       },
+      "ExpertBaselineMetricItem": {
+        "properties": {
+          "metric_key": {
+            "type": "string",
+            "title": "Metric Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "unit_label": {
+            "type": "string",
+            "title": "Unit Label"
+          },
+          "lower_is_better": {
+            "type": "boolean",
+            "title": "Lower Is Better",
+            "default": true
+          },
+          "manual_historical_value": {
+            "type": "number",
+            "title": "Manual Historical Value"
+          },
+          "expert_baseline_value": {
+            "type": "number",
+            "title": "Expert Baseline Value"
+          },
+          "llm_mpax_value": {
+            "type": "number",
+            "title": "Llm Mpax Value"
+          },
+          "improvement_vs_manual_pct": {
+            "type": "number",
+            "title": "Improvement Vs Manual Pct"
+          },
+          "expert_attainment_pct": {
+            "type": "number",
+            "title": "Expert Attainment Pct"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "metric_key",
+          "label",
+          "unit_label",
+          "manual_historical_value",
+          "expert_baseline_value",
+          "llm_mpax_value",
+          "improvement_vs_manual_pct",
+          "expert_attainment_pct"
+        ],
+        "title": "ExpertBaselineMetricItem",
+        "description": "Quantitative comparison of a single operational KPI across Manual Historical,\nExpert-Attained Baseline (Gurobi/MPAX reference), and User + LLM MPAX Policy.\n\nAttributes:\n    metric_key (str): Machine-readable metric key.\n    label (str): Human-readable metric label.\n    unit_label (str): Measurement unit (e.g., `'patient-days'`, `'cancellations/mo'`, `'$/patient-day'`).\n    lower_is_better (bool): True if lower values represent better clinical/operational performance.\n    manual_historical_value (float): Value under current unoptimized hospital operations.\n    expert_baseline_value (float): Value attained by optimization experts (graduate-student baseline).\n    llm_mpax_value (float): Value attained by the decision maker using the LLM + JAX/MPAX interface.\n    improvement_vs_manual_pct (float): Percentage improvement of `llm_mpax_value` over `manual_historical_value`.\n    expert_attainment_pct (float): Percentage of the expert baseline improvement captured by the user's policy."
+      },
+      "FeedbackUpdate": {
+        "properties": {
+          "is_selected": {
+            "type": "boolean",
+            "title": "Is Selected",
+            "default": true
+          },
+          "execution_success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Success"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          }
+        },
+        "type": "object",
+        "title": "FeedbackUpdate",
+        "description": "Payload for the frontend to report a user's choice and optional execution telemetry."
+      },
+      "ForgotPasswordRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": ["email"],
+        "title": "ForgotPasswordRequest",
+        "description": "Payload requesting a time-bound password reset token."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2269,7 +8115,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         "type": "object",
         "title": "HTTPValidationError"
       },
-      "HttpConfig": {
+      "HttpConfig-Input": {
         "properties": {
           "x": {
             "type": "integer",
@@ -2299,6 +8145,31 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "title": "H",
             "description": "Grid Height (rows)",
             "default": 4
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Optional description or clinical guidance for the widget."
           },
           "url": {
             "type": "string",
@@ -2332,13 +8203,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "description": "Query Parameters"
           },
           "body": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Body",
+            "$ref": "#/components/schemas/JsonValue-Input",
             "description": "JSON Body payload"
           },
           "meta_forward_auth": {
@@ -2375,13 +8240,473 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         "type": "object",
         "required": ["url"],
         "title": "HttpConfig",
-        "description": "Configuration schema for HTTP-type widgets.\nEnforces the presence of a valid URL and standard HTTP properties.\n\nAttributes:\n    url (HttpUrl): The fully qualified target URL.\n    method (str): HTTP Verb (GET, POST, etc.).\n    headers (Dict[str, str]): Custom request headers.\n    params (Dict[str, str]): URL Query parameters.\n    body (Optional[Any]): JSON Body for mutation requests.\n    meta_forward_auth (bool): If True, the backend forwards the user's JWT.\n    xKey (Optional[str]): key path for X-Axis/Labels.\n    yKey (Optional[str]): key path for Y-Axis/Values."
+        "description": "Configuration schema for HTTP-type widgets.\nEnforces the presence of a valid URL and standard HTTP properties.\n\nAttributes:\n    url (HttpUrl): The fully qualified target URL.\n    method (str): HTTP Verb (GET, POST, etc.).\n    headers (dict[str, str]): Custom request headers.\n    params (dict[str, str]): URL Query parameters.\n    body (JsonValue): JSON Body for mutation requests.\n    meta_forward_auth (bool): If True, the backend forwards the user's JWT.\n    xKey (str | None): key path for X-Axis/Labels.\n    yKey (str | None): key path for Y-Axis/Values."
+      },
+      "HttpConfig-Output": {
+        "properties": {
+          "x": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "X",
+            "description": "Grid X position",
+            "default": 0
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Y",
+            "description": "Grid Y position",
+            "default": 0
+          },
+          "w": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "W",
+            "description": "Grid Width (cols)",
+            "default": 6
+          },
+          "h": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "H",
+            "description": "Grid Height (rows)",
+            "default": 4
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Optional description or clinical guidance for the widget."
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Url",
+            "description": "The fully qualified target URL."
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+            "title": "Method",
+            "description": "HTTP Method",
+            "default": "GET"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Headers",
+            "description": "Request Headers"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Params",
+            "description": "Query Parameters"
+          },
+          "body": {
+            "$ref": "#/components/schemas/JsonValue-Output",
+            "description": "JSON Body payload"
+          },
+          "meta_forward_auth": {
+            "type": "boolean",
+            "title": "Meta Forward Auth",
+            "description": "If true, forwards the user's JWT to the target.",
+            "default": false
+          },
+          "xKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xkey",
+            "description": "JSON path for X-Axis/Labels"
+          },
+          "yKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ykey",
+            "description": "JSON path for Y-Axis/Values"
+          }
+        },
+        "type": "object",
+        "required": ["url"],
+        "title": "HttpConfig",
+        "description": "Configuration schema for HTTP-type widgets.\nEnforces the presence of a valid URL and standard HTTP properties.\n\nAttributes:\n    url (HttpUrl): The fully qualified target URL.\n    method (str): HTTP Verb (GET, POST, etc.).\n    headers (dict[str, str]): Custom request headers.\n    params (dict[str, str]): URL Query parameters.\n    body (JsonValue): JSON Body for mutation requests.\n    meta_forward_auth (bool): If True, the backend forwards the user's JWT.\n    xKey (str | None): key path for X-Axis/Labels.\n    yKey (str | None): key path for Y-Axis/Values."
+      },
+      "HttpExecutionPayload": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "http",
+            "title": "Kind",
+            "default": "http"
+          },
+          "data": {
+            "$ref": "#/components/schemas/JsonValue-Output"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Status",
+            "default": 200
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "HttpExecutionPayload",
+        "description": "Strongly typed Pydantic model for an HTTP widget execution payload.\n\nAttributes:\n    kind (Literal[\"http\"]): Discriminator tag identifying an HTTP widget execution payload.\n    data (JsonValue): Parsed JSON or raw text payload returned by the target HTTP endpoint.\n    status (int | str): HTTP status code (or status label).\n    error (str | None): Error message if the HTTP request failed, else None."
+      },
+      "InstitutionProfileSchema": {
+        "properties": {
+          "institution_id": {
+            "type": "string",
+            "title": "Institution Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "short_name": {
+            "type": "string",
+            "title": "Short Name"
+          },
+          "hospital_type": {
+            "type": "string",
+            "enum": ["pediatric", "adult"],
+            "title": "Hospital Type"
+          },
+          "total_licensed_beds": {
+            "type": "integer",
+            "title": "Total Licensed Beds"
+          },
+          "unit_capacities": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Unit Capacities"
+          },
+          "clinical_services": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Clinical Services"
+          },
+          "home_unit_map": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Home Unit Map"
+          },
+          "surgical_programs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Surgical Programs"
+          },
+          "federated_node_enabled": {
+            "type": "boolean",
+            "title": "Federated Node Enabled",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "institution_id",
+          "name",
+          "short_name",
+          "hospital_type",
+          "total_licensed_beds",
+          "unit_capacities",
+          "clinical_services",
+          "home_unit_map",
+          "surgical_programs"
+        ],
+        "title": "InstitutionProfileSchema",
+        "description": "Describes a partner hospital institution profile and its non-PHI operational baseline parameters.\n\nAttributes:\n    institution_id (str): Canonical identifier (e.g., `'stanford_childrens'`).\n    name (str): Full hospital name.\n    short_name (str): Concise display name.\n    hospital_type (Literal[\"pediatric\", \"adult\"]): Pediatric or adult academic medical center.\n    total_licensed_beds (int): Total licensed inpatient beds across modeled units.\n    unit_capacities (dict[str, int]): Default bed capacity per clinical unit.\n    clinical_services (list[str]): Modeled clinical services.\n    home_unit_map (dict[str, list[str]]): Specialized home units for each clinical service.\n    surgical_programs (list[str]): Supported surgical scheduling algorithms (e.g., `['BEDS', 'POINTS']`).\n    federated_node_enabled (bool): Whether privacy-preserving federated parameter sharing is active."
+      },
+      "JsonObject-Input": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/JsonValue-Input"
+        },
+        "type": "object"
+      },
+      "JsonObject-Output": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/JsonValue-Output"
+        },
+        "type": "object"
+      },
+      "JsonPrimitive": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "JsonValue-Input": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/JsonPrimitive"
+          },
+          {
+            "items": {
+              "$ref": "#/components/schemas/JsonValue-Input"
+            },
+            "type": "array"
+          },
+          {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue-Input"
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "JsonValue-Output": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/JsonPrimitive"
+          },
+          {
+            "items": {
+              "$ref": "#/components/schemas/JsonValue-Output"
+            },
+            "type": "array"
+          },
+          {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue-Output"
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "LlmConnectionTestRequest": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "api_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Base"
+          },
+          "gemma4_sql_backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemma4 Sql Backend"
+          },
+          "run_inference_smoke_test": {
+            "type": "boolean",
+            "title": "Run Inference Smoke Test",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": ["provider"],
+        "title": "LlmConnectionTestRequest",
+        "description": "Request payload to verify connectivity and optional 1-token inference for an LLM provider/model.\n\nAttributes:\n    provider (str): Provider slug (`'ollama'`, `'gemini'`, `'gemma4sql'`, `'openai'`, etc.).\n    model_id (str | None): Target model identifier to verify.\n    api_key (str | None): Optional API key override to test before saving.\n    api_base (str | None): Optional custom API base URL override to test.\n    gemma4_sql_backend (str | None): Optional `gemma-4-sql` backend engine (`'mlx'`, `'jax'`, `'pytorch'`, `'api'`).\n    run_inference_smoke_test (bool): If True, executes a minimal 1-token/SQL smoke generation to detect crashes."
+      },
+      "LlmHealthSchema": {
+        "properties": {
+          "providers_count": {
+            "type": "integer",
+            "title": "Providers Count",
+            "description": "Number of configured LLM providers."
+          },
+          "mock_mode": {
+            "type": "boolean",
+            "title": "Mock Mode",
+            "description": "True if running in mock/fallback AI mode."
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Models",
+            "description": "List of active model display names."
+          },
+          "provider_statuses": {
+            "items": {
+              "$ref": "#/components/schemas/LlmProviderHealthResponse"
+            },
+            "type": "array",
+            "title": "Provider Statuses",
+            "description": "Live connection statuses for configured LLM providers."
+          }
+        },
+        "type": "object",
+        "required": ["providers_count", "mock_mode"],
+        "title": "LlmHealthSchema",
+        "description": "Schema for LLM swarm configuration and readiness."
+      },
+      "LlmHealthSummaryResponse": {
+        "properties": {
+          "overall_status": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "degraded",
+              "offline",
+              "unconfigured",
+              "auth_error",
+              "crashed",
+              "error"
+            ],
+            "title": "Overall Status",
+            "default": "connected"
+          },
+          "active_count": {
+            "type": "integer",
+            "title": "Active Count",
+            "default": 0
+          },
+          "healthy_count": {
+            "type": "integer",
+            "title": "Healthy Count",
+            "default": 0
+          },
+          "unhealthy_count": {
+            "type": "integer",
+            "title": "Unhealthy Count",
+            "default": 0
+          },
+          "mock_mode": {
+            "type": "boolean",
+            "title": "Mock Mode",
+            "default": false
+          },
+          "duckdb_readonly_ready": {
+            "type": "boolean",
+            "title": "Duckdb Readonly Ready",
+            "default": true
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/LlmProviderHealthResponse"
+            },
+            "type": "array",
+            "title": "Providers"
+          }
+        },
+        "type": "object",
+        "title": "LlmHealthSummaryResponse",
+        "description": "Aggregated connection health summary across all configured LLM models and read-only DuckDB.\n\nAttributes:\n    overall_status (LlmConnectionStatus): Aggregate status across configured models.\n    active_count (int): Total number of configured/discovered models evaluated.\n    healthy_count (int): Number of models with `'connected'` status.\n    unhealthy_count (int): Number of models with offline, auth, or crash errors.\n    mock_mode (bool): True if no real LLM providers are configured and fallback mock is active.\n    duckdb_readonly_ready (bool): True if the read-only DuckDB analytics connection is healthy.\n    providers (list[LlmProviderHealthResponse]): Per-model connection probe results."
       },
       "LlmOutputAnalyticsRow": {
         "properties": {
           "source": {
             "type": "string",
-            "enum": ["chat", "ai"],
+            "enum": ["chat", "ai", "optimization"],
             "title": "Source"
           },
           "candidate_id": {
@@ -2502,7 +8827,95 @@ Below is the OpenAPI specification extracted from the current backend. You can u
           "created_at"
         ],
         "title": "LlmOutputAnalyticsRow",
-        "description": "Flattened analytics row for LLM candidate outputs."
+        "description": "Flattened analytics row representing a single LLM candidate response or optimization iteration."
+      },
+      "LlmProviderHealthResponse": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "processor_type": {
+            "type": "string",
+            "enum": ["SQL", "OLLAMA", "ANY_LLM", "GEMMA_4_SQL", "GEMINI"],
+            "title": "Processor Type",
+            "default": "ANY_LLM"
+          },
+          "is_local": {
+            "type": "boolean",
+            "title": "Is Local",
+            "default": false
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "degraded",
+              "offline",
+              "unconfigured",
+              "auth_error",
+              "crashed",
+              "error"
+            ],
+            "title": "Status",
+            "default": "connected"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Connection healthy"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "remediation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remediation"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          }
+        },
+        "type": "object",
+        "required": ["provider", "model_id", "display_name"],
+        "title": "LlmProviderHealthResponse",
+        "description": "Live connection validation result for a single LLM provider or model combatant.\n\nAttributes:\n    provider (str): Provider slug (`'ollama'`, `'gemini'`, `'gemma4sql'`, `'openai'`, etc.).\n    model_id (str): Canonical model identifier (`'ollama:llama3'`, `'gemma4sql:google/gemma-4-sql-9b'`).\n    display_name (str): Human-friendly display name.\n    processor_type (ProcessorType): Processor classification category.\n    is_local (bool): True if hosted locally.\n    status (LlmConnectionStatus): Connection validity status (`'connected'`, `'offline'`, `'auth_error'`, `'crashed'`, etc.).\n    latency_ms (float | None): Round-trip probe latency in milliseconds.\n    message (str): Human-readable status summary.\n    error_code (str | None): Canonical `ErrorCode` string if probe failed.\n    remediation (str | None): Recommended fix command or configuration guidance.\n    checked_at (datetime): UTC timestamp when the health probe completed."
       },
       "MessageCandidateResponse": {
         "properties": {
@@ -2544,6 +8957,16 @@ Below is the OpenAPI specification extracted from the current backend. You can u
           "is_selected": {
             "type": "boolean",
             "title": "Is Selected"
+          },
+          "sql_preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SqlPreviewPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -2571,6 +8994,12 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             ],
             "title": "Target Models",
             "description": "Optional list of model IDs to query."
+          },
+          "auto_execute_sql": {
+            "type": "boolean",
+            "title": "Auto Execute Sql",
+            "description": "Whether to automatically execute extracted SQL against read-only DuckDB and attach a preview.",
+            "default": true
           }
         },
         "type": "object",
@@ -2621,6 +9050,16 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "type": "array",
             "title": "Candidates",
             "default": []
+          },
+          "sql_preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SqlPreviewPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -2686,6 +9125,28 @@ Below is the OpenAPI specification extracted from the current backend. You can u
           "is_selected": {
             "type": "boolean",
             "title": "Is Selected"
+          },
+          "execution_success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Success"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
           }
         },
         "type": "object",
@@ -2698,6 +9159,56 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         ],
         "title": "ModelCandidateResponse",
         "description": "Public response schema for the frontend.\nHides 'model_identifier' to maintain double-blind benchmarking."
+      },
+      "ModelCompendiumEntrySchema": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "family": {
+            "type": "string",
+            "enum": [
+              "gemini",
+              "gemma",
+              "medgemma",
+              "vaultgemma",
+              "deepseek",
+              "llama",
+              "litert_odml"
+            ],
+            "title": "Family"
+          },
+          "deployment_target": {
+            "type": "string",
+            "enum": [
+              "gcp_cloud",
+              "tpu_fine_tuned",
+              "local_ollama",
+              "litert_on_device"
+            ],
+            "title": "Deployment Target"
+          },
+          "supports_differential_privacy": {
+            "type": "boolean",
+            "title": "Supports Differential Privacy",
+            "default": false
+          },
+          "supports_hot_loading": {
+            "type": "boolean",
+            "title": "Supports Hot Loading",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["model_id", "display_name", "family", "deployment_target"],
+        "title": "ModelCompendiumEntrySchema",
+        "description": "Metadata for an LLM or On-Device ML (LiteRT) model in the optimization compendium.\n\nAttributes:\n    model_id (str): Canonical model identifier (e.g., `'gemini-2.5-pro'`, `'medgemma-27b-text-it'`).\n    display_name (str): Human-readable model name.\n    family (Literal[\"gemini\", \"gemma\", \"medgemma\", \"vaultgemma\", \"deepseek\", \"llama\", \"litert_odml\"]): Model family.\n    deployment_target (Literal[\"gcp_cloud\", \"tpu_fine_tuned\", \"local_ollama\", \"litert_on_device\"]): Execution runtime.\n    supports_differential_privacy (bool): True for privacy-hardened models such as VaultGemma.\n    supports_hot_loading (bool): True if hot-loadable via LiteRT on Android/Chrome."
       },
       "ModelInfo": {
         "properties": {
@@ -2716,12 +9227,994 @@ Below is the OpenAPI specification extracted from the current backend. You can u
           "is_local": {
             "type": "boolean",
             "title": "Is Local"
+          },
+          "processor_type": {
+            "type": "string",
+            "enum": ["SQL", "OLLAMA", "ANY_LLM", "GEMMA_4_SQL", "GEMINI"],
+            "title": "Processor Type",
+            "default": "ANY_LLM"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "degraded",
+              "offline",
+              "unconfigured",
+              "auth_error",
+              "crashed",
+              "error"
+            ],
+            "title": "Status",
+            "default": "connected"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "remediation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remediation"
+          },
+          "supports_sql_generation": {
+            "type": "boolean",
+            "title": "Supports Sql Generation",
+            "default": true
+          },
+          "supports_streaming": {
+            "type": "boolean",
+            "title": "Supports Streaming",
+            "default": true
+          },
+          "backend_engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend Engine"
           }
         },
         "type": "object",
         "required": ["id", "name", "provider", "is_local"],
         "title": "ModelInfo",
-        "description": "Information about a configured LLM in the Arena."
+        "description": "Information about a configured LLM or SQL processor in the platform.\n\nAttributes:\n    id (str): Unique processor identifier (e.g. `'SQL'`, `'ollama/llama3'`, `'openai/gpt-4o'`).\n    name (str): Human-readable display label (e.g. `'SQL [no model]'`, `'GPT-4o'`).\n    provider (str): Provider slug (`'sql'`, `'ollama'`, `'openai'`, `'gemini'`, `'gemma4sql'`, etc.).\n    is_local (bool): True if the processor executes locally (DuckDB SQL, `gemma-4-sql`, or local Ollama).\n    processor_type (ProcessorType): High-level processor category (`'SQL'`, `'OLLAMA'`, `'ANY_LLM'`, `'GEMMA_4_SQL'`, or `'GEMINI'`).\n    status (LlmConnectionStatus): Current connection health status of the model/provider.\n    latency_ms (float | None): Last measured probe or generation latency in milliseconds.\n    error_message (str | None): Diagnostic error message when status is unhealthy.\n    remediation (str | None): Actionable remediation advice when status is unhealthy.\n    supports_sql_generation (bool): True if the processor converts natural language into SQL.\n    supports_streaming (bool): True if the processor supports token streaming.\n    backend_engine (str | None): Underlying execution engine (e.g. `'duckdb'`, `'mlx'`, `'jax'`, `'any-llm'`)."
+      },
+      "OptimizationEvaluationSummaryResponse": {
+        "properties": {
+          "total_sessions": {
+            "type": "integer",
+            "title": "Total Sessions"
+          },
+          "total_iterations": {
+            "type": "integer",
+            "title": "Total Iterations"
+          },
+          "mean_expert_baseline_gap_pct": {
+            "type": "number",
+            "title": "Mean Expert Baseline Gap Pct"
+          },
+          "survey_count": {
+            "type": "integer",
+            "title": "Survey Count"
+          },
+          "mean_score_vs_manual_process": {
+            "type": "number",
+            "title": "Mean Score Vs Manual Process"
+          },
+          "mean_score_vs_other_workflow_tech": {
+            "type": "number",
+            "title": "Mean Score Vs Other Workflow Tech"
+          },
+          "mean_interpretability_score": {
+            "type": "number",
+            "title": "Mean Interpretability Score"
+          },
+          "recent_surveys": {
+            "items": {
+              "$ref": "#/components/schemas/OptimizationSurveyResponse"
+            },
+            "type": "array",
+            "title": "Recent Surveys"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total_sessions",
+          "total_iterations",
+          "mean_expert_baseline_gap_pct",
+          "survey_count",
+          "mean_score_vs_manual_process",
+          "mean_score_vs_other_workflow_tech",
+          "mean_interpretability_score"
+        ],
+        "title": "OptimizationEvaluationSummaryResponse",
+        "description": "Aggregated quantitative (DES Expert Baseline) and qualitative (User Survey) evaluation metrics.\n\nAttributes:\n    total_sessions (int): Total optimization sessions created.\n    total_iterations (int): Total conversational MPAX iterations executed.\n    mean_expert_baseline_gap_pct (float): Average optimality gap (%) relative to expert baseline.\n    survey_count (int): Total qualitative user experience surveys submitted.\n    mean_score_vs_manual_process (float): Mean 1-5 rating comparing against the manual graduate-student loop.\n    mean_score_vs_other_workflow_tech (float): Mean 1-5 rating comparing against other hospital workflow tech.\n    mean_interpretability_score (float): Mean 1-5 rating of result transparency and interpretability.\n    recent_surveys (list[OptimizationSurveyResponse]): Most recent survey submissions."
+      },
+      "OptimizationIterationRequest": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "quick_action_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "patient_days_by_unit",
+                  "patient_days_by_service",
+                  "combined_analysis",
+                  "summary_statistics",
+                  "optimize_service_units",
+                  "smooth_surgical_schedule",
+                  "optimize_nurse_staffing"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quick Action Id"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "default": "gemini-2.5-pro"
+          },
+          "service_constraints": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ServiceUnitConstraint"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Constraints"
+          },
+          "surgical_constraints": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SurgicalScheduleConstraint"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Surgical Constraints"
+          },
+          "staffing_constraints": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StaffingConstraint"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staffing Constraints"
+          },
+          "reset_constraints": {
+            "type": "boolean",
+            "title": "Reset Constraints",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["prompt"],
+        "title": "OptimizationIterationRequest",
+        "description": "Request payload for submitting a conversational prompt or constraint update in an active session.\n\nAttributes:\n    prompt (str): Natural language instruction from the hospital decision maker.\n    quick_action_id (QuickActionType | None): Optional Quick Action triggered alongside the turn.\n    model_id (str): Selected LLM or LiteRT model ID (`'gemini-2.5-pro'`, `'medgemma-27b-text-it'`, `'vaultgemma-9b'`, etc.).\n    service_constraints (list[ServiceUnitConstraint] | None): Optional explicit Use Case 1 constraint overrides.\n    surgical_constraints (list[SurgicalScheduleConstraint] | None): Optional explicit Use Case 2 constraint overrides.\n    staffing_constraints (list[StaffingConstraint] | None): Optional explicit Use Case 3 constraint overrides.\n    reset_constraints (bool): If True, clears prior session constraints before applying the new turn."
+      },
+      "OptimizationIterationResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "turn_index": {
+            "type": "integer",
+            "title": "Turn Index"
+          },
+          "user_prompt": {
+            "type": "string",
+            "title": "User Prompt"
+          },
+          "quick_action_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quick Action Id"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "assistant_explanation": {
+            "type": "string",
+            "title": "Assistant Explanation"
+          },
+          "follow_up_suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Follow Up Suggestions"
+          },
+          "solution": {
+            "$ref": "#/components/schemas/OptimizationSolutionPayload"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "session_id",
+          "turn_index",
+          "user_prompt",
+          "model_id",
+          "assistant_explanation",
+          "solution",
+          "latency_ms",
+          "created_at"
+        ],
+        "title": "OptimizationIterationResponse",
+        "description": "Response representing a completed conversational optimization iteration.\n\nAttributes:\n    id (str): Iteration UUID string.\n    session_id (str): Parent session UUID string.\n    turn_index (int): 1-based sequential turn index.\n    user_prompt (str): Submitted user prompt.\n    quick_action_id (str | None): Optional Quick Action identifier.\n    model_id (str): Model identifier that translated constraints and explained the solution.\n    assistant_explanation (str): Transparent, clinician-friendly explanation of the MPAX optimization result.\n    follow_up_suggestions (list[str]): Suggested next-step prompts for iterative refinement.\n    solution (OptimizationSolutionPayload): Deterministic JAX/MPAX solution and DES baseline evaluation.\n    latency_ms (int): End-to-end turn execution time in milliseconds.\n    created_at (datetime): Turn completion timestamp."
+      },
+      "OptimizationSessionCreate": {
+        "properties": {
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case",
+            "default": "service_unit"
+          },
+          "institution_id": {
+            "type": "string",
+            "title": "Institution Id",
+            "default": "stanford_childrens"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "initial_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial Prompt"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "default": "gemini-2.5-pro"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "OptimizationSessionCreate",
+        "description": "Request payload to create a new iterative Hospital Optimization session.\n\nAttributes:\n    use_case (OptimizationUseCase): Clinical use case (`'service_unit'`, `'surgical_scheduling'`, or `'staffing_optimization'`).\n    institution_id (str): Partner hospital institution profile ID.\n    title (str | None): Optional custom session title.\n    initial_prompt (str | None): Optional initial natural-language instruction to execute immediately.\n    model_id (str): Default LLM or LiteRT model identifier for the session."
+      },
+      "OptimizationSessionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case"
+          },
+          "institution_id": {
+            "type": "string",
+            "title": "Institution Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "latest_solution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OptimizationSolutionPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "iterations": {
+            "items": {
+              "$ref": "#/components/schemas/OptimizationIterationResponse"
+            },
+            "type": "array",
+            "title": "Iterations"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "use_case",
+          "institution_id",
+          "title",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "OptimizationSessionResponse",
+        "description": "Full state of an iterative Hospital Optimization session including its history of turns.\n\nAttributes:\n    id (str): Session UUID string.\n    user_id (str): Owner user UUID string.\n    use_case (OptimizationUseCase): Session optimization use case.\n    institution_id (str): Partner hospital institution ID.\n    title (str): Session title.\n    latest_solution (OptimizationSolutionPayload | None): Most recent JAX/MPAX solution payload.\n    iterations (list[OptimizationIterationResponse]): Chronological list of conversational turns.\n    created_at (datetime): Session creation timestamp.\n    updated_at (datetime): Session last update timestamp."
+      },
+      "OptimizationSolutionPayload": {
+        "properties": {
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case"
+          },
+          "institution_id": {
+            "type": "string",
+            "title": "Institution Id",
+            "default": "stanford_childrens"
+          },
+          "solver_status": {
+            "type": "string",
+            "enum": ["OPTIMAL", "FEASIBLE", "INFEASIBLE"],
+            "title": "Solver Status",
+            "default": "OPTIMAL"
+          },
+          "objective_value": {
+            "type": "number",
+            "title": "Objective Value"
+          },
+          "solve_time_ms": {
+            "type": "number",
+            "title": "Solve Time Ms"
+          },
+          "service_unit_assignments": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceUnitAssignmentRow"
+            },
+            "type": "array",
+            "title": "Service Unit Assignments"
+          },
+          "surgical_schedule_assignments": {
+            "items": {
+              "$ref": "#/components/schemas/SurgicalBlockAssignmentRow"
+            },
+            "type": "array",
+            "title": "Surgical Schedule Assignments"
+          },
+          "staffing_assignments": {
+            "items": {
+              "$ref": "#/components/schemas/StaffingShiftAssignmentRow"
+            },
+            "type": "array",
+            "title": "Staffing Assignments"
+          },
+          "des_evaluation": {
+            "$ref": "#/components/schemas/DesEvaluationSummary"
+          },
+          "applied_service_constraints": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceUnitConstraint"
+            },
+            "type": "array",
+            "title": "Applied Service Constraints"
+          },
+          "applied_surgical_constraints": {
+            "items": {
+              "$ref": "#/components/schemas/SurgicalScheduleConstraint"
+            },
+            "type": "array",
+            "title": "Applied Surgical Constraints"
+          },
+          "applied_staffing_constraints": {
+            "items": {
+              "$ref": "#/components/schemas/StaffingConstraint"
+            },
+            "type": "array",
+            "title": "Applied Staffing Constraints"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "use_case",
+          "objective_value",
+          "solve_time_ms",
+          "des_evaluation"
+        ],
+        "title": "OptimizationSolutionPayload",
+        "description": "Unified JAX/MPAX optimization result payload across all three clinical use cases.\n\nAttributes:\n    use_case (OptimizationUseCase): Use case that was solved.\n    institution_id (str): Target hospital institution identifier.\n    solver_status (Literal[\"OPTIMAL\", \"FEASIBLE\", \"INFEASIBLE\"]): MPAX solver convergence status.\n    objective_value (float): Optimal objective value from MPAX `r2HPDHG` / `raPDHG`.\n    solve_time_ms (float): JAX/MPAX solver execution duration in milliseconds.\n    service_unit_assignments (list[ServiceUnitAssignmentRow]): Assignments for Use Case 1.\n    surgical_schedule_assignments (list[SurgicalBlockAssignmentRow]): Assignments for Use Case 2.\n    staffing_assignments (list[StaffingShiftAssignmentRow]): Assignments for Use Case 3.\n    des_evaluation (DesEvaluationSummary): Quantitative JAX DES comparison against the expert baseline.\n    applied_service_constraints (list[ServiceUnitConstraint]): Active Use Case 1 constraints.\n    applied_surgical_constraints (list[SurgicalScheduleConstraint]): Active Use Case 2 constraints.\n    applied_staffing_constraints (list[StaffingConstraint]): Active Use Case 3 constraints."
+      },
+      "OptimizationSolveRequest": {
+        "properties": {
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case",
+            "default": "service_unit"
+          },
+          "institution_id": {
+            "type": "string",
+            "title": "Institution Id",
+            "default": "stanford_childrens"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "default": "gemini-2.5-pro"
+          },
+          "service_constraints": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceUnitConstraint"
+            },
+            "type": "array",
+            "title": "Service Constraints"
+          },
+          "surgical_constraints": {
+            "items": {
+              "$ref": "#/components/schemas/SurgicalScheduleConstraint"
+            },
+            "type": "array",
+            "title": "Surgical Constraints"
+          },
+          "staffing_constraints": {
+            "items": {
+              "$ref": "#/components/schemas/StaffingConstraint"
+            },
+            "type": "array",
+            "title": "Staffing Constraints"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "OptimizationSolveRequest",
+        "description": "Stateless request payload for solving any of the three JAX/MPAX clinical optimization models directly.\n\nAttributes:\n    use_case (OptimizationUseCase): Clinical use case to solve.\n    institution_id (str): Partner hospital institution profile identifier.\n    prompt (str | None): Optional natural-language constraint instruction to parse and apply.\n    model_id (str): LLM or LiteRT model ID used when translating `prompt`.\n    service_constraints (list[ServiceUnitConstraint]): Explicit Use Case 1 constraints.\n    surgical_constraints (list[SurgicalScheduleConstraint]): Explicit Use Case 2 constraints.\n    staffing_constraints (list[StaffingConstraint]): Explicit Use Case 3 constraints."
+      },
+      "OptimizationSurveyCreate": {
+        "properties": {
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case",
+            "default": "service_unit"
+          },
+          "role_category": {
+            "type": "string",
+            "title": "Role Category",
+            "default": "Physician"
+          },
+          "score_vs_manual_process": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Score Vs Manual Process"
+          },
+          "score_vs_other_workflow_tech": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Score Vs Other Workflow Tech"
+          },
+          "interpretability_score": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Interpretability Score"
+          },
+          "qualitative_feedback": {
+            "type": "string",
+            "title": "Qualitative Feedback",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "score_vs_manual_process",
+          "score_vs_other_workflow_tech",
+          "interpretability_score"
+        ],
+        "title": "OptimizationSurveyCreate",
+        "description": "Payload for submitting the structured qualitative & quantitative UX evaluation survey\nmandated in `[Technical_addendum]_MPAX_PROJECT_PLAN.md`.\n\nAttributes:\n    session_id (str | None): Optional optimization session UUID being evaluated.\n    use_case (OptimizationUseCase): Evaluated optimization use case.\n    role_category (str): Clinical/operational role of the respondent.\n    score_vs_manual_process (int): 1-5 rating vs. the current manual graduate-student email loop.\n    score_vs_other_workflow_tech (int): 1-5 rating vs. other hospital workflow technology (EHR/spreadsheets).\n    interpretability_score (int): 1-5 rating of result transparency and clinical interpretability.\n    qualitative_feedback (str): Free-text feedback on workflow impact and suggested improvements."
+      },
+      "OptimizationSurveyResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case"
+          },
+          "role_category": {
+            "type": "string",
+            "title": "Role Category"
+          },
+          "score_vs_manual_process": {
+            "type": "integer",
+            "title": "Score Vs Manual Process"
+          },
+          "score_vs_other_workflow_tech": {
+            "type": "integer",
+            "title": "Score Vs Other Workflow Tech"
+          },
+          "interpretability_score": {
+            "type": "integer",
+            "title": "Interpretability Score"
+          },
+          "qualitative_feedback": {
+            "type": "string",
+            "title": "Qualitative Feedback"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "use_case",
+          "role_category",
+          "score_vs_manual_process",
+          "score_vs_other_workflow_tech",
+          "interpretability_score",
+          "qualitative_feedback",
+          "created_at"
+        ],
+        "title": "OptimizationSurveyResponse",
+        "description": "Persisted user survey record returned by the API.\n\nAttributes:\n    id (str): Survey UUID string.\n    user_id (str): Respondent user UUID string.\n    session_id (str | None): Linked session UUID string if provided.\n    use_case (OptimizationUseCase): Evaluated use case.\n    role_category (str): Respondent role category.\n    score_vs_manual_process (int): 1-5 rating vs. manual graduate-student email loop.\n    score_vs_other_workflow_tech (int): 1-5 rating vs. other hospital workflow technology.\n    interpretability_score (int): 1-5 rating of clinical interpretability.\n    qualitative_feedback (str): Respondent's qualitative comments.\n    created_at (datetime): Survey submission timestamp."
+      },
+      "PasswordResetResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "reset_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reset Token"
+          }
+        },
+        "type": "object",
+        "required": ["message"],
+        "title": "PasswordResetResponse",
+        "description": "Status confirmation after password reset or email dispatch."
+      },
+      "PostgresHealthSchema": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Connection status (e.g. connected, error, unknown)."
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms",
+            "description": "Response latency in milliseconds."
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details",
+            "description": "Diagnostic details or host information."
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Error message if connection failed."
+          }
+        },
+        "type": "object",
+        "required": ["status"],
+        "title": "PostgresHealthSchema",
+        "description": "Schema for PostgreSQL status."
+      },
+      "PropensityLosImpactSchema": {
+        "properties": {
+          "baseline_mean_los_days": {
+            "type": "number",
+            "title": "Baseline Mean Los Days"
+          },
+          "optimized_mean_los_days": {
+            "type": "number",
+            "title": "Optimized Mean Los Days"
+          },
+          "estimated_patient_days_saved": {
+            "type": "number",
+            "title": "Estimated Patient Days Saved"
+          },
+          "off_service_los_penalty_days": {
+            "type": "number",
+            "title": "Off Service Los Penalty Days"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "baseline_mean_los_days",
+          "optimized_mean_los_days",
+          "estimated_patient_days_saved",
+          "off_service_los_penalty_days"
+        ],
+        "title": "PropensityLosImpactSchema",
+        "description": "Propensity-matched Length of Stay (LOS) impact estimate for Use Case 1.\n\nAttributes:\n    baseline_mean_los_days (float): Historical mean length of stay in days.\n    optimized_mean_los_days (float): Propensity-matched estimated mean LOS after reducing off-service placements.\n    estimated_patient_days_saved (float): Annualized inpatient bed-days saved from on-service care specialization.\n    off_service_los_penalty_days (float): Estimated additional LOS per off-service admission from propensity matching."
+      },
+      "QuickActionDefinitionSchema": {
+        "properties": {
+          "action_id": {
+            "type": "string",
+            "enum": [
+              "patient_days_by_unit",
+              "patient_days_by_service",
+              "combined_analysis",
+              "summary_statistics",
+              "optimize_service_units",
+              "smooth_surgical_schedule",
+              "optimize_nurse_staffing"
+            ],
+            "title": "Action Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "icon": {
+            "type": "string",
+            "title": "Icon"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case"
+          },
+          "default_prompt": {
+            "type": "string",
+            "title": "Default Prompt"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action_id",
+          "label",
+          "icon",
+          "description",
+          "use_case",
+          "default_prompt"
+        ],
+        "title": "QuickActionDefinitionSchema",
+        "description": "Metadata describing a one-click Quick Action button in the Hospital Optimization Workspace.\n\nAttributes:\n    action_id (QuickActionType): Canonical Quick Action identifier.\n    label (str): Display label shown on the Quick Action chip.\n    icon (str): Icon identifier or emoji badge matching the alpha bed-use tool.\n    description (str): Explanation of the analysis or optimization performed.\n    use_case (OptimizationUseCase): Associated clinical optimization use case.\n    default_prompt (str): Default natural-language prompt associated with this action."
+      },
+      "QuickActionExecutionRequest": {
+        "properties": {
+          "institution_id": {
+            "type": "string",
+            "title": "Institution Id",
+            "default": "stanford_childrens"
+          },
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case",
+            "default": "service_unit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "QuickActionExecutionRequest",
+        "description": "Request payload for executing a deterministic Quick Action (`patient_days_by_unit`, etc.).\n\nAttributes:\n    institution_id (str): Target hospital institution profile ID.\n    use_case (OptimizationUseCase): Active optimization use case."
+      },
+      "QuickActionExecutionResponse": {
+        "properties": {
+          "action_id": {
+            "type": "string",
+            "enum": [
+              "patient_days_by_unit",
+              "patient_days_by_service",
+              "combined_analysis",
+              "summary_statistics",
+              "optimize_service_units",
+              "smooth_surgical_schedule",
+              "optimize_nurse_staffing"
+            ],
+            "title": "Action Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary_markdown": {
+            "type": "string",
+            "title": "Summary Markdown"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/SqlScalar"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "optimization_solution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OptimizationSolutionPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action_id",
+          "title",
+          "summary_markdown",
+          "columns",
+          "rows"
+        ],
+        "title": "QuickActionExecutionResponse",
+        "description": "Response returned when a user clicks one of the Quick Action buttons in the workspace.\n\nAttributes:\n    action_id (QuickActionType): Executed Quick Action identifier.\n    title (str): Human-readable report title.\n    summary_markdown (str): Concise clinical narrative explaining the table/optimization output.\n    columns (list[str]): Ordered column headers for tabular display.\n    rows (list[dict[str, SqlScalar]]): Tabular rows computed from DuckDB census data or MPAX.\n    optimization_solution (OptimizationSolutionPayload | None): Populated when the Quick Action runs an MPAX solve."
+      },
+      "RefreshTokenRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          }
+        },
+        "type": "object",
+        "required": ["refresh_token"],
+        "title": "RefreshTokenRequest",
+        "description": "Payload requesting rotation of an active refresh token."
+      },
+      "ReingestResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "True if re-ingestion completed without fatal errors."
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Status message describing the result."
+          },
+          "tables": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Tables",
+            "description": "Updated table row counts."
+          }
+        },
+        "type": "object",
+        "required": ["success", "message"],
+        "title": "ReingestResponse",
+        "description": "Schema for dataset re-ingestion operation result."
+      },
+      "ResetPasswordRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": ["token", "new_password"],
+        "title": "ResetPasswordRequest",
+        "description": "Payload supplying reset token and the replacement password."
       },
       "SQLExecutionRequest": {
         "properties": {
@@ -2744,9 +10237,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "default": 100
           },
           "global_params": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Global Params"
+            "$ref": "#/components/schemas/JsonObject-Input"
           }
         },
         "type": "object",
@@ -2758,8 +10249,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         "properties": {
           "data": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/SqlRow"
             },
             "type": "array",
             "title": "Data"
@@ -2800,13 +10290,8 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         "title": "SQLGenerationRequest",
         "description": "Request model for generating SQL from natural language."
       },
-      "ScenarioConstraint": {
+      "ServiceUnitAssignmentRow": {
         "properties": {
-          "type": {
-            "type": "string",
-            "title": "Type",
-            "description": "Constraint type (e.g., 'force_flow')"
-          },
           "service": {
             "type": "string",
             "title": "Service"
@@ -2815,48 +10300,61 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "type": "string",
             "title": "Unit"
           },
-          "min": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Min"
+          "is_home_unit": {
+            "type": "boolean",
+            "title": "Is Home Unit"
           },
-          "max": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max"
+          "baseline_patient_days": {
+            "type": "number",
+            "title": "Baseline Patient Days"
+          },
+          "expert_baseline_patient_days": {
+            "type": "number",
+            "title": "Expert Baseline Patient Days"
+          },
+          "optimized_patient_days": {
+            "type": "number",
+            "title": "Optimized Patient Days"
+          },
+          "allocated_beds": {
+            "type": "integer",
+            "title": "Allocated Beds"
+          },
+          "delta_patient_days": {
+            "type": "number",
+            "title": "Delta Patient Days"
           }
         },
+        "additionalProperties": false,
         "type": "object",
-        "required": ["type", "service", "unit"],
-        "title": "ScenarioConstraint",
-        "description": "Represents a specific rule for the solver.\nExample: Force 'Gen_Peds' into 'Nursery' with minimum 5 beds."
+        "required": [
+          "service",
+          "unit",
+          "is_home_unit",
+          "baseline_patient_days",
+          "expert_baseline_patient_days",
+          "optimized_patient_days",
+          "allocated_beds",
+          "delta_patient_days"
+        ],
+        "title": "ServiceUnitAssignmentRow",
+        "description": "Single row in the Use Case 1 Service-Unit Assignment MPAX optimization output.\n\nAttributes:\n    service (str): Clinical service name.\n    unit (str): Hospital unit name.\n    is_home_unit (bool): True if `unit` is a designated specialized home unit for `service`.\n    baseline_patient_days (float): Historical/manual patient days assigned to this `(service, unit)` pair.\n    expert_baseline_patient_days (float): Expert Gurobi/MPAX reference patient days.\n    optimized_patient_days (float): User + LLM iterative MPAX optimized patient days.\n    allocated_beds (int): Integer beds dedicated to `service` on `unit`.\n    delta_patient_days (float): Change in patient days (`optimized_patient_days - baseline_patient_days`)."
       },
-      "ScenarioResult": {
+      "ServiceUnitConstraint": {
         "properties": {
-          "assignments": {
-            "items": {
-              "$ref": "#/components/schemas/SimulationAssignment"
-            },
-            "type": "array",
-            "title": "Assignments"
-          },
-          "status": {
+          "constraint_type": {
             "type": "string",
-            "title": "Status"
+            "enum": [
+              "lock_service_to_unit",
+              "prohibit_service_on_unit",
+              "unit_capacity_delta",
+              "unit_capacity_override",
+              "min_service_beds",
+              "max_service_beds"
+            ],
+            "title": "Constraint Type"
           },
-          "message": {
+          "service": {
             "anyOf": [
               {
                 "type": "string"
@@ -2865,85 +10363,35 @@ Below is the OpenAPI specification extracted from the current backend. You can u
                 "type": "null"
               }
             ],
-            "title": "Message"
-          }
-        },
-        "type": "object",
-        "required": ["assignments", "status"],
-        "title": "ScenarioResult",
-        "description": "Response containing the optimization outcome."
-      },
-      "ScenarioRunRequest": {
-        "properties": {
-          "demand_source_sql": {
-            "type": "string",
-            "title": "Demand Source Sql",
-            "description": "SQL Query. Supports 2 cols (Service, Count) or 3 cols (Service, CurrentUnit, Count)."
-          },
-          "capacity_parameters": {
-            "additionalProperties": {
-              "type": "number"
-            },
-            "type": "object",
-            "title": "Capacity Parameters",
-            "description": "Map of Unit Name to available bed capacity."
-          },
-          "constraints": {
-            "items": {
-              "$ref": "#/components/schemas/ScenarioConstraint"
-            },
-            "type": "array",
-            "title": "Constraints",
-            "description": "List of hard constraints to apply."
-          },
-          "affinity_overrides": {
-            "additionalProperties": {
-              "additionalProperties": {
-                "type": "number"
-              },
-              "type": "object"
-            },
-            "type": "object",
-            "title": "Affinity Overrides",
-            "description": "Optional overrides for clinical affinity scores."
-          }
-        },
-        "type": "object",
-        "required": ["demand_source_sql", "capacity_parameters"],
-        "title": "ScenarioRunRequest",
-        "description": "Payload to trigger a simulation run."
-      },
-      "SimulationAssignment": {
-        "properties": {
-          "Service": {
-            "type": "string",
             "title": "Service"
           },
-          "Unit": {
-            "type": "string",
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Unit"
           },
-          "Patient_Count": {
+          "value": {
             "type": "number",
-            "title": "Patient Count"
-          },
-          "Original_Count": {
-            "type": "number",
-            "title": "Original Count",
-            "description": "Count in this unit before optimization (if provided).",
+            "title": "Value",
             "default": 0.0
           },
-          "Delta": {
-            "type": "number",
-            "title": "Delta",
-            "description": "Net change (Proposed - Original).",
-            "default": 0.0
+          "rationale": {
+            "type": "string",
+            "title": "Rationale",
+            "default": ""
           }
         },
+        "additionalProperties": false,
         "type": "object",
-        "required": ["Service", "Unit", "Patient_Count"],
-        "title": "SimulationAssignment",
-        "description": "Single row in the optimization result."
+        "required": ["constraint_type"],
+        "title": "ServiceUnitConstraint",
+        "description": "Mathematical constraint for Use Case 1 (Service-Unit Assignments & Bed-Use Optimization).\n\nAttributes:\n    constraint_type (Literal[\"lock_service_to_unit\", \"prohibit_service_on_unit\", \"unit_capacity_delta\", \"unit_capacity_override\", \"min_service_beds\", \"max_service_beds\"]): Type of rule.\n    service (str | None): Target clinical service (e.g., `'General Pediatrics'`, `'Neurosurgery'`).\n    unit (str | None): Target hospital unit (e.g., `'PCU 350'`, `'PCU 360'`, `'PICU'`).\n    value (float): Numeric bed count, delta, or bound.\n    rationale (str): Human-readable clinical rationale extracted from the leader's prompt."
       },
       "SqlConfig": {
         "properties": {
@@ -2976,9 +10424,40 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "description": "Grid Height (rows)",
             "default": 4
           },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Optional description or clinical guidance for the widget."
+          },
           "query": {
-            "type": "string",
-            "minLength": 1,
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Query",
             "description": "The raw SQL query to execute."
           },
@@ -3005,12 +10484,547 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             ],
             "title": "Ykey",
             "description": "Column for Y-Axis/Values"
+          },
+          "allow_natural_text": {
+            "type": "boolean",
+            "title": "Allow Natural Text",
+            "description": "Whether the widget allows the user to enter natural text on the dashboard.",
+            "default": false
+          },
+          "processor": {
+            "type": "string",
+            "title": "Processor",
+            "description": "Processor identifier: 'SQL' [no model], 'ollama:<model>', or '<any-llm-provider>:<model>'.",
+            "default": "SQL"
+          },
+          "natural_text_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Natural Text Prompt",
+            "description": "Default or saved natural text prompt for this widget."
+          },
+          "placeholder_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placeholder Text",
+            "description": "Optional placeholder shown in the widget's natural text input."
           }
         },
         "type": "object",
-        "required": ["query"],
         "title": "SqlConfig",
-        "description": "Configuration schema for SQL-type widgets.\nEnforces the presence of a SQL query string.\n\nAttributes:\n    query (str): The raw SQL query to execute.\n    xKey (Optional[str]): Column name to mapping for X-Axis/Labels.\n    yKey (Optional[str]): Column name to mapping for Y-Axis/Values."
+        "description": "Configuration schema for SQL-type widgets (including natural-text-enabled SQL widgets).\n\nAttributes:\n    query (str | None): The raw SQL query to execute (optional when `allow_natural_text=True`).\n    xKey (str | None): Column name mapping for X-Axis/Labels.\n    yKey (str | None): Column name mapping for Y-Axis/Values.\n    allow_natural_text (bool): Whether the widget renders a natural text input on the dashboard.\n    processor (str): Processor identifier (`'SQL'` [no model], `'ollama:<model>'`, or `'<provider>:<model>'`).\n    natural_text_prompt (str | None): Default or saved natural text prompt for this widget.\n    placeholder_text (str | None): Optional placeholder shown in the widget's natural text input."
+      },
+      "SqlExecutionPayload": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "sql",
+            "title": "Kind",
+            "default": "sql"
+          },
+          "data": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SqlRow"
+                },
+                {
+                  "$ref": "#/components/schemas/JsonValue-Output"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "generated_sql": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated Sql"
+          },
+          "processor_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processor Used"
+          },
+          "natural_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Natural Text"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "SqlExecutionPayload",
+        "description": "Strongly typed Pydantic model for a SQL widget execution payload.\n\nAttributes:\n    kind (Literal[\"sql\"]): Discriminator tag identifying a SQL widget execution payload.\n    data (list[SqlRow | JsonValue]): List of row dictionaries returned by DuckDB.\n    columns (list[str]): Ordered list of column names.\n    error (str | None): Error message if SQL execution failed, else None.\n    generated_sql (str | None): Optional generated or executed SQL string.\n    processor_used (str | None): Optional processor identifier used.\n    natural_text (str | None): Optional natural language input processed."
+      },
+      "SqlPreviewPayload": {
+        "properties": {
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SqlRow"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "row_count": {
+            "type": "integer",
+            "title": "Row Count",
+            "default": 0
+          },
+          "execution_time_ms": {
+            "type": "number",
+            "title": "Execution Time Ms",
+            "default": 0.0
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "title": "SqlPreviewPayload",
+        "description": "Inline read-only DuckDB execution preview attached to a chat message or arena candidate.\n\nAttributes:\n    columns (list[str]): Ordered column names returned by the read-only DuckDB query.\n    data (list[SqlRow]): Bounded preview rows (up to `max_rows`).\n    row_count (int): Number of rows returned in `data`.\n    execution_time_ms (float): Query execution duration in milliseconds.\n    truncated (bool): True if the result set reached the preview row cap.\n    error (str | None): Validation or DuckDB execution error message if execution failed."
+      },
+      "SqlRow": {
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/SqlScalar"
+            },
+            {
+              "$ref": "#/components/schemas/JsonValue-Output"
+            }
+          ]
+        },
+        "type": "object"
+      },
+      "SqlScalar": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "string",
+            "format": "date"
+          },
+          {
+            "type": "string",
+            "format": "time"
+          },
+          {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+          },
+          {
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "StaffingConstraint": {
+        "properties": {
+          "constraint_type": {
+            "type": "string",
+            "enum": [
+              "max_overtime_shifts",
+              "max_a_days",
+              "min_nurse_to_patient_ratio",
+              "float_pool_cap",
+              "seasonality_surge_multiplier"
+            ],
+            "title": "Constraint Type"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "provider_role": {
+            "type": "string",
+            "enum": ["RN", "MD", "NP_PA", "FLOAT_RN"],
+            "title": "Provider Role",
+            "default": "RN"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value",
+            "default": 0.0
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["constraint_type"],
+        "title": "StaffingConstraint",
+        "description": "Mathematical constraint for Use Case 3 (Physician & Nurse Scheduling Optimization).\n\nAttributes:\n    constraint_type (Literal[\"max_overtime_shifts\", \"max_a_days\", \"min_nurse_to_patient_ratio\", \"float_pool_cap\", \"seasonality_surge_multiplier\"]): Type of staffing rule.\n    unit (str | None): Target unit or `'ALL'` for cross-unit rules.\n    provider_role (Literal[\"RN\", \"MD\", \"NP_PA\", \"FLOAT_RN\"]): Clinical provider category.\n    value (float): Numeric ratio, shift cap, or seasonal multiplier.\n    rationale (str): Clinical burnout or productivity rationale."
+      },
+      "StaffingShiftAssignmentRow": {
+        "properties": {
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "season_window": {
+            "type": "string",
+            "title": "Season Window"
+          },
+          "scheduled_core_rns": {
+            "type": "number",
+            "title": "Scheduled Core Rns"
+          },
+          "scheduled_float_rns": {
+            "type": "number",
+            "title": "Scheduled Float Rns"
+          },
+          "scheduled_physicians": {
+            "type": "number",
+            "title": "Scheduled Physicians"
+          },
+          "unexpected_overtime_shifts": {
+            "type": "number",
+            "title": "Unexpected Overtime Shifts"
+          },
+          "administrative_a_days": {
+            "type": "number",
+            "title": "Administrative A Days"
+          },
+          "staffing_cost_per_patient_day": {
+            "type": "number",
+            "title": "Staffing Cost Per Patient Day"
+          },
+          "net_margin_contribution": {
+            "type": "number",
+            "title": "Net Margin Contribution"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "unit",
+          "season_window",
+          "scheduled_core_rns",
+          "scheduled_float_rns",
+          "scheduled_physicians",
+          "unexpected_overtime_shifts",
+          "administrative_a_days",
+          "staffing_cost_per_patient_day",
+          "net_margin_contribution"
+        ],
+        "title": "StaffingShiftAssignmentRow",
+        "description": "Single row in the Use Case 3 (Physician & Nurse Scheduling) MPAX optimization output.\n\nAttributes:\n    unit (str): Hospital unit name.\n    season_window (str): Weekday / month-of-year seasonal demand window (e.g., `'Winter Mon-Wed Surge'`).\n    scheduled_core_rns (float): Scheduled core unit RN FTE shifts per day.\n    scheduled_float_rns (float): Cross-unit float pool RN FTE shifts allocated.\n    scheduled_physicians (float): Scheduled attending/fellow physician shifts.\n    unexpected_overtime_shifts (float): Expected non-voluntary overtime shifts per week.\n    administrative_a_days (float): Expected A-days (shifts sent home due to low volume) per week.\n    staffing_cost_per_patient_day (float): Total RN staffing cost per patient day ($ USD).\n    net_margin_contribution (float): Estimated net revenue minus staffing cost per patient day ($ USD)."
+      },
+      "SurgicalBlockAssignmentRow": {
+        "properties": {
+          "program": {
+            "type": "string",
+            "enum": ["BEDS", "POINTS"],
+            "title": "Program"
+          },
+          "procedure_group": {
+            "type": "string",
+            "title": "Procedure Group"
+          },
+          "recovery_unit": {
+            "type": "string",
+            "title": "Recovery Unit"
+          },
+          "day_of_week": {
+            "type": "string",
+            "enum": ["Mon", "Tue", "Wed", "Thu", "Fri"],
+            "title": "Day Of Week"
+          },
+          "baseline_cases": {
+            "type": "number",
+            "title": "Baseline Cases"
+          },
+          "optimized_cases": {
+            "type": "number",
+            "title": "Optimized Cases"
+          },
+          "expected_postop_los_days": {
+            "type": "number",
+            "title": "Expected Postop Los Days"
+          },
+          "expected_unit_occupancy": {
+            "type": "number",
+            "title": "Expected Unit Occupancy"
+          },
+          "unit_capacity": {
+            "type": "integer",
+            "title": "Unit Capacity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "program",
+          "procedure_group",
+          "recovery_unit",
+          "day_of_week",
+          "baseline_cases",
+          "optimized_cases",
+          "expected_postop_los_days",
+          "expected_unit_occupancy",
+          "unit_capacity"
+        ],
+        "title": "SurgicalBlockAssignmentRow",
+        "description": "Single row in the Use Case 2 (BEDS & POINTS) Surgical Scheduling MPAX optimization output.\n\nAttributes:\n    program (Literal[\"BEDS\", \"POINTS\"]): Non-cardiovascular (`BEDS`) or cardiovascular (`POINTS`) program.\n    procedure_group (str): Elective surgical procedure cohort name.\n    recovery_unit (str): Primary post-operative recovery unit (`PICU`, `CVICU`, `PCU 380`, etc.).\n    day_of_week (Literal[\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\"]): Assigned day of surgery.\n    baseline_cases (float): Historical number of cases scheduled on this day.\n    optimized_cases (float): MPAX-smoothed number of cases scheduled on this day.\n    expected_postop_los_days (float): JAX ML estimated mean post-operative LOS (accounting for long tail).\n    expected_unit_occupancy (float): Resulting expected recovery unit bed demand on this day.\n    unit_capacity (int): Total recovery unit bed capacity."
+      },
+      "SurgicalScheduleConstraint": {
+        "properties": {
+          "constraint_type": {
+            "type": "string",
+            "enum": [
+              "max_daily_postop_admits",
+              "lock_procedure_day",
+              "prohibit_procedure_day",
+              "reserve_emergency_beds",
+              "surgeon_block_cap"
+            ],
+            "title": "Constraint Type"
+          },
+          "program": {
+            "type": "string",
+            "enum": ["BEDS", "POINTS", "ALL"],
+            "title": "Program",
+            "default": "ALL"
+          },
+          "procedure_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Procedure Group"
+          },
+          "recovery_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Unit"
+          },
+          "day_of_week": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["Mon", "Tue", "Wed", "Thu", "Fri"]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Of Week"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value",
+            "default": 0.0
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["constraint_type"],
+        "title": "SurgicalScheduleConstraint",
+        "description": "Mathematical constraint for Use Case 2 (Surgical Scheduling \u2014 BEDS & POINTS).\n\nAttributes:\n    constraint_type (Literal[\"max_daily_postop_admits\", \"lock_procedure_day\", \"prohibit_procedure_day\", \"reserve_emergency_beds\", \"surgeon_block_cap\"]): Type of surgical rule.\n    program (Literal[\"BEDS\", \"POINTS\", \"ALL\"]): Target surgical scheduling program.\n    procedure_group (str | None): Surgical procedure cohort (e.g., `'Spine Fusion'`, `'VSD Repair'`).\n    recovery_unit (str | None): Target post-operative recovery unit (e.g., `'PICU'`, `'CVICU'`, `'PCU 380'`).\n    day_of_week (Literal[\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\"] | None): Target operating day.\n    value (float): Numeric cap or reservation count.\n    rationale (str): Clinical rationale for the scheduling constraint."
+      },
+      "SystemDiagnosticsResponse": {
+        "properties": {
+          "health": {
+            "$ref": "#/components/schemas/SystemHealthResponse",
+            "description": "Current system health summary."
+          },
+          "environment_checks": {
+            "$ref": "#/components/schemas/JsonObject-Output",
+            "description": "Environment variables and runtime parameters."
+          },
+          "troubleshooting_guides": {
+            "items": {
+              "$ref": "#/components/schemas/TroubleshootingStep"
+            },
+            "type": "array",
+            "title": "Troubleshooting Guides",
+            "description": "Curated troubleshooting steps."
+          }
+        },
+        "type": "object",
+        "required": ["health", "environment_checks"],
+        "title": "SystemDiagnosticsResponse",
+        "description": "Schema for comprehensive system diagnostics and troubleshooting guides."
+      },
+      "SystemHealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Overall health status: healthy, degraded, unhealthy, or critical.",
+            "default": "healthy"
+          },
+          "overall_status": {
+            "type": "string",
+            "title": "Overall Status",
+            "description": "Overall health status: healthy, degraded, unhealthy, or critical."
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp",
+            "description": "ISO timestamp of health assessment."
+          },
+          "database": {
+            "$ref": "#/components/schemas/DatabaseSummarySchema",
+            "description": "Boolean connectivity summary for PostgreSQL and DuckDB."
+          },
+          "postgres": {
+            "$ref": "#/components/schemas/PostgresHealthSchema",
+            "description": "Relational database health."
+          },
+          "duckdb": {
+            "$ref": "#/components/schemas/DuckDbHealthSchema",
+            "description": "OLAP analytics database health."
+          },
+          "data": {
+            "$ref": "#/components/schemas/DataHealthSchema",
+            "description": "Data readiness and ingestion health."
+          },
+          "datasets": {
+            "$ref": "#/components/schemas/DataHealthSchema",
+            "description": "Clinical datasets readiness and row count health."
+          },
+          "templates": {
+            "$ref": "#/components/schemas/TemplateHealthSchema",
+            "description": "Template registry health."
+          },
+          "llm": {
+            "$ref": "#/components/schemas/LlmHealthSchema",
+            "description": "LLM provider configuration health."
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticWarningSchema"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "description": "Active diagnostic warnings."
+          }
+        },
+        "type": "object",
+        "required": [
+          "overall_status",
+          "timestamp",
+          "postgres",
+          "duckdb",
+          "data",
+          "datasets",
+          "templates",
+          "llm"
+        ],
+        "title": "SystemHealthResponse",
+        "description": "Schema for aggregated system health response."
       },
       "TableInfo": {
         "properties": {
@@ -3061,9 +11075,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "title": "Category"
           },
           "parameters_schema": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Parameters Schema",
+            "$ref": "#/components/schemas/JsonObject-Input",
             "description": "JSON Schema definition for dynamic form generation."
           }
         },
@@ -3071,6 +11083,81 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         "required": ["title", "sql_template", "category"],
         "title": "TemplateCreate",
         "description": "Payload for creating a new template.\nInherits validation from TemplateBase."
+      },
+      "TemplateHealthSchema": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Template registry readiness status: ready, empty, or critical.",
+            "default": "ready"
+          },
+          "template_count": {
+            "type": "integer",
+            "title": "Template Count",
+            "description": "Total number of templates present in the database.",
+            "default": 0
+          },
+          "templates_loaded": {
+            "type": "integer",
+            "title": "Templates Loaded",
+            "description": "Number of widget templates seeded into database."
+          },
+          "has_templates": {
+            "type": "boolean",
+            "title": "Has Templates",
+            "description": "True if one or more templates are available."
+          },
+          "missing_file": {
+            "type": "boolean",
+            "title": "Missing File",
+            "description": "True if initial_templates.json was missing."
+          }
+        },
+        "type": "object",
+        "required": ["templates_loaded", "has_templates", "missing_file"],
+        "title": "TemplateHealthSchema",
+        "description": "Schema for template seeder pack health."
+      },
+      "TemplateInstantiateRequest": {
+        "properties": {
+          "parameters": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue-Input"
+            },
+            "type": "object",
+            "title": "Parameters",
+            "description": "Runtime parameter values keyed by placeholder name."
+          }
+        },
+        "type": "object",
+        "title": "TemplateInstantiateRequest",
+        "description": "Request payload for instantiating a SQL template with user-supplied parameters.\n\nAttributes:\n    parameters (dict[str, JsonValue]): Runtime parameter key-value overrides to inject."
+      },
+      "TemplateInstantiateResponse": {
+        "properties": {
+          "template_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Template Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "visualization": {
+            "type": "string",
+            "title": "Visualization"
+          },
+          "query": {
+            "type": "string",
+            "title": "Query"
+          }
+        },
+        "type": "object",
+        "required": ["template_id", "title", "visualization", "query"],
+        "title": "TemplateInstantiateResponse",
+        "description": "Response payload returned after interpolating a SQL template on the backend.\n\nAttributes:\n    template_id (UUID): Identifier of the source template.\n    title (str): Default title of the template.\n    visualization (str): Recommended visualization type (`metric`, `bar_chart`, `pie`, `table`).\n    query (str): Interpolated, SQL-injection-safe DuckDB query string."
       },
       "TemplateResponse": {
         "properties": {
@@ -3102,9 +11189,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "title": "Category"
           },
           "parameters_schema": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Parameters Schema",
+            "$ref": "#/components/schemas/JsonObject-Output",
             "description": "JSON Schema definition for dynamic form generation."
           },
           "id": {
@@ -3167,14 +11252,12 @@ Below is the OpenAPI specification extracted from the current backend. You can u
           "parameters_schema": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Input"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Parameters Schema"
+            ]
           }
         },
         "type": "object",
@@ -3212,6 +11295,31 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "description": "Grid Height (rows)",
             "default": 4
           },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Optional description or clinical guidance for the widget."
+          },
           "content": {
             "type": "string",
             "title": "Content",
@@ -3223,6 +11331,41 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         "title": "TextConfig",
         "description": "Configuration schema for Static Text/Markdown widgets.\n\nAttributes:\n    content (str): The static text content (Markdown supported)."
       },
+      "TextExecutionPayload": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "text",
+            "title": "Kind",
+            "default": "text"
+          },
+          "status": {
+            "type": "string",
+            "const": "success",
+            "title": "Status",
+            "default": "success"
+          },
+          "data": {
+            "type": "null",
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "TextExecutionPayload",
+        "description": "Strongly typed Pydantic model for a static TEXT/Markdown widget execution payload.\n\nAttributes:\n    kind (Literal[\"text\"]): Discriminator tag identifying a static text widget payload.\n    status (Literal[\"success\"]): Fixed success status string.\n    data (None): Always None for static text widgets.\n    error (str | None): Always None for static text widgets."
+      },
       "Token": {
         "properties": {
           "access_token": {
@@ -3231,13 +11374,60 @@ Below is the OpenAPI specification extracted from the current backend. You can u
           },
           "token_type": {
             "type": "string",
-            "title": "Token Type"
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "refresh_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Token"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In",
+            "default": 3600
           }
         },
         "type": "object",
-        "required": ["access_token", "token_type"],
+        "required": ["access_token"],
         "title": "Token",
-        "description": "OAuth2 access token response payload."
+        "description": "OAuth2 access and refresh token response payload."
+      },
+      "TroubleshootingStep": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Step title or action description."
+          },
+          "command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command",
+            "description": "Copyable terminal command."
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Contextual explanation for why this step resolves the issue."
+          }
+        },
+        "type": "object",
+        "required": ["title", "description"],
+        "title": "TroubleshootingStep",
+        "description": "Schema for a copyable troubleshooting remediation step."
       },
       "UserCreate": {
         "properties": {
@@ -3248,7 +11438,14 @@ Below is the OpenAPI specification extracted from the current backend. You can u
           },
           "password": {
             "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
             "title": "Password"
+          },
+          "language_preference": {
+            "type": "string",
+            "title": "Language Preference",
+            "default": "en"
           }
         },
         "type": "object",
@@ -3275,12 +11472,51 @@ Below is the OpenAPI specification extracted from the current backend. You can u
           "is_admin": {
             "type": "boolean",
             "title": "Is Admin"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "DATA_ANALYST"
+          },
+          "language_preference": {
+            "type": "string",
+            "title": "Language Preference"
           }
         },
         "type": "object",
-        "required": ["id", "email", "is_active", "is_admin"],
+        "required": [
+          "id",
+          "email",
+          "is_active",
+          "is_admin",
+          "language_preference"
+        ],
         "title": "UserResponse",
         "description": "Public representation of a user returned by the API."
+      },
+      "UserRoleUpdate": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": ["role"],
+        "title": "UserRoleUpdate",
+        "description": "Payload for updating a user's clinical role."
+      },
+      "UserStatusUpdate": {
+        "properties": {
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": ["is_active"],
+        "title": "UserStatusUpdate",
+        "description": "Payload for modifying user active account status."
       },
       "ValidationError": {
         "properties": {
@@ -3319,6 +11555,19 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "minLength": 1,
             "title": "Title"
           },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
           "type": {
             "type": "string",
             "const": "HTTP",
@@ -3330,7 +11579,7 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "description": "Visualization ID (e.g. 'table', 'metric')"
           },
           "config": {
-            "$ref": "#/components/schemas/HttpConfig",
+            "$ref": "#/components/schemas/HttpConfig-Input",
             "description": "HTTP-specific configuration"
           }
         },
@@ -3346,6 +11595,19 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "maxLength": 100,
             "minLength": 1,
             "title": "Title"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
           },
           "type": {
             "type": "string",
@@ -3375,6 +11637,19 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "minLength": 1,
             "title": "Title"
           },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
           "type": {
             "type": "string",
             "const": "TEXT",
@@ -3396,6 +11671,121 @@ Below is the OpenAPI specification extracted from the current backend. You can u
         "required": ["title", "type", "config"],
         "title": "WidgetCreateText",
         "description": "Payload for creating a Text Widget.\nStrictly enforces `type=\"TEXT\"` and `config` matching TextConfig."
+      },
+      "WidgetRefreshRequest": {
+        "properties": {
+          "global_params": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject-Input"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional global dashboard filter parameters dictionary."
+          },
+          "natural_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Natural Text",
+            "description": "Optional user-entered natural language prompt or raw SQL query."
+          },
+          "processor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processor",
+            "description": "Optional processor override ('SQL', 'ollama:<model>', or '<provider>:<model>')."
+          },
+          "dept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dept",
+            "description": "Optional clinical department filter."
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department",
+            "description": "Optional department filter."
+          },
+          "service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service",
+            "description": "Optional clinical service filter."
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date",
+            "description": "Optional start date filter (YYYY-MM-DD)."
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date",
+            "description": "Optional end date filter (YYYY-MM-DD)."
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit",
+            "description": "Optional hospital unit filter."
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "WidgetRefreshRequest",
+        "description": "Strongly typed request payload for refreshing a single widget (`POST /dashboards/{id}/widgets/{wid}/refresh`).\n\nAttributes:\n    global_params (JsonObject | None): Optional nested global filter parameters dictionary.\n    natural_text (str | None): Optional user-entered natural language prompt or raw SQL query.\n    processor (str | None): Optional processor override (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`).\n    dept (str | None): Optional clinical department filter shorthand.\n    department (str | None): Optional department filter shorthand.\n    service (str | None): Optional clinical service filter shorthand.\n    start_date (str | None): Optional start date filter shorthand (`YYYY-MM-DD`).\n    end_date (str | None): Optional end date filter shorthand (`YYYY-MM-DD`).\n    unit (str | None): Optional hospital unit filter shorthand."
       },
       "WidgetReorderItem": {
         "properties": {
@@ -3446,6 +11836,17 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "type": "string",
             "title": "Title"
           },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
           "type": {
             "type": "string",
             "title": "Type"
@@ -3455,8 +11856,20 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             "title": "Visualization"
           },
           "config": {
-            "additionalProperties": true,
-            "type": "object",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject-Output"
+              },
+              {
+                "$ref": "#/components/schemas/SqlConfig"
+              },
+              {
+                "$ref": "#/components/schemas/HttpConfig-Output"
+              },
+              {
+                "$ref": "#/components/schemas/TextConfig"
+              }
+            ],
             "title": "Config"
           },
           "id": {
@@ -3495,6 +11908,19 @@ Below is the OpenAPI specification extracted from the current backend. You can u
             ],
             "title": "Title"
           },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
           "visualization": {
             "anyOf": [
               {
@@ -3509,19 +11935,17 @@ Below is the OpenAPI specification extracted from the current backend. You can u
           "config": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Input"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Config"
+            ]
           }
         },
         "type": "object",
         "title": "WidgetUpdate",
-        "description": "Payload for updating a widget.\nNote: Polymorphism is relaxed on Updates because 'type' is often immutable or missing\nin partial PATCH requests. We allow a loose dict for config, but individual fields\nare validated if matched.\n\nAttributes:\n    title (Optional[str]): New title.\n    visualization (Optional[str]): New visualization type.\n    config (Optional[Dict]): Partial configuration updates."
+        "description": "Payload for updating a widget.\nNote: Polymorphism is relaxed on Updates because 'type' is often immutable or missing\nin partial PATCH requests. We allow a typed JSON object for config, and individual fields\nare validated if matched.\n\nAttributes:\n    title (str | None): New title.\n    subtitle (str | None): Optional new subtitle or caption.\n    visualization (str | None): New visualization type.\n    config (JsonObject | None): Partial configuration updates."
       }
     },
     "securitySchemes": {

@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import io.healthplatform.pulsequery.api.apis.DashboardsApi
 import io.healthplatform.pulsequery.api.models.SqlConfig
 import io.healthplatform.pulsequery.api.models.WidgetIn
 import io.healthplatform.pulsequery.core.error.UiErrorKey
@@ -49,6 +50,7 @@ import io.healthplatform.pulsequery.core.result.asResultMap
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
+import io.healthplatform.pulsequery.network.QueryCartRepository
 import io.healthplatform.pulsequery.network.StagedQuery
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -64,11 +66,13 @@ import pulsequery.composeapp.generated.resources.remove_from_cart
  *
  * @param dashboardId Target dashboard UUID.
  * @param queries Ordered list of staged queries to deploy.
+ * @param dashboardsApi [DashboardsApi] client used to persist widgets.
  * @return [Result] indicating batch completion or the first encountered error.
  */
 internal suspend fun deployStagedQueriesToDashboard(
     dashboardId: String,
-    queries: List<StagedQuery>
+    queries: List<StagedQuery>,
+    dashboardsApi: DashboardsApi = AppContainer.dashboardsApi
 ): Result<Unit> {
     return runResultPulseAsync {
         var batchResult: Result<Unit> = Result.success(Unit)
@@ -78,7 +82,7 @@ internal suspend fun deployStagedQueriesToDashboard(
                 visualization = query.visualization,
                 config = SqlConfig(query = query.sql)
             )
-            val singleRes = AppContainer.dashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
+            val singleRes = dashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
                 dashboardId,
                 widgetIn
             ).asResultMap { }
@@ -98,13 +102,17 @@ internal suspend fun deployStagedQueriesToDashboard(
  * @param activeDashboardId ID of active dashboard to deploy to, if available.
  * @param onDismiss Callback to dismiss bottom sheet.
  * @param onQueriesDeployed Callback executed when queries are successfully created.
+ * @param queryCartRepository Repository managing staged SQL queries.
+ * @param dashboardsApi [DashboardsApi] client used for batch widget deployment.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QueryCartBottomSheet(
     activeDashboardId: String? = null,
     onDismiss: () -> Unit = {},
-    onQueriesDeployed: () -> Unit = {}
+    onQueriesDeployed: () -> Unit = {},
+    queryCartRepository: QueryCartRepository = AppContainer.queryCartRepository,
+    dashboardsApi: DashboardsApi = AppContainer.dashboardsApi
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss
@@ -112,7 +120,9 @@ fun QueryCartBottomSheet(
         QueryCartSheetContent(
             activeDashboardId = activeDashboardId,
             onDismiss = onDismiss,
-            onQueriesDeployed = onQueriesDeployed
+            onQueriesDeployed = onQueriesDeployed,
+            queryCartRepository = queryCartRepository,
+            dashboardsApi = dashboardsApi
         )
     }
 }
@@ -123,14 +133,18 @@ fun QueryCartBottomSheet(
  * @param activeDashboardId ID of active dashboard to deploy to, if available.
  * @param onDismiss Callback to dismiss bottom sheet.
  * @param onQueriesDeployed Callback executed when queries are successfully created.
+ * @param queryCartRepository Repository managing staged SQL queries.
+ * @param dashboardsApi [DashboardsApi] client used for batch widget deployment.
  */
 @Composable
 internal fun QueryCartSheetContent(
     activeDashboardId: String? = null,
     onDismiss: () -> Unit = {},
-    onQueriesDeployed: () -> Unit = {}
+    onQueriesDeployed: () -> Unit = {},
+    queryCartRepository: QueryCartRepository = AppContainer.queryCartRepository,
+    dashboardsApi: DashboardsApi = AppContainer.dashboardsApi
 ) {
-    val stagedQueries by AppContainer.queryCartRepository.stagedQueries.collectAsState()
+    val stagedQueries by queryCartRepository.stagedQueries.collectAsState()
     val scope = rememberCoroutineScope()
     var isDeploying by remember { mutableStateOf(false) }
     var deployError by remember { mutableStateOf<String?>(null) }
@@ -151,7 +165,7 @@ internal fun QueryCartSheetContent(
             )
 
             if (stagedQueries.isNotEmpty()) {
-                TextButton(onClick = { AppContainer.queryCartRepository.clearCart() }) {
+                TextButton(onClick = { queryCartRepository.clearCart() }) {
                     Text(stringResource(Res.string.clear_all))
                 }
             }
@@ -190,7 +204,10 @@ internal fun QueryCartSheetContent(
                     .weight(1f, fill = false)
             ) {
                 items(stagedQueries) { query ->
-                    StagedQueryCard(query = query)
+                    StagedQueryCard(
+                        query = query,
+                        onRemoveQuery = { queryCartRepository.removeQuery(it) }
+                    )
                 }
             }
 
@@ -202,9 +219,13 @@ internal fun QueryCartSheetContent(
                         scope.launch {
                             isDeploying = true
                             deployError = null
-                            deployStagedQueriesToDashboard(activeDashboardId, stagedQueries).fold(
+                            deployStagedQueriesToDashboard(
+                                dashboardId = activeDashboardId,
+                                queries = stagedQueries,
+                                dashboardsApi = dashboardsApi
+                            ).fold(
                                 onSuccess = {
-                                    AppContainer.queryCartRepository.clearCart()
+                                    queryCartRepository.clearCart()
                                     onQueriesDeployed()
                                     onDismiss()
                                 },
@@ -252,10 +273,12 @@ private fun DeployCartButtonContent(
  * Card displaying an individual staged query item.
  *
  * @param query Staged query model.
+ * @param onRemoveQuery Callback invoked with the query ID when the delete button is clicked.
  */
 @Composable
 private fun StagedQueryCard(
-    query: StagedQuery
+    query: StagedQuery,
+    onRemoveQuery: (String) -> Unit
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth()
@@ -271,8 +294,7 @@ private fun StagedQueryCard(
                     style = MaterialTheme.typography.titleMedium
                 )
                 IconButton(
-                    onClick = { AppContainer.queryCartRepository.removeQuery(query.id) },
-                    modifier = Modifier.size(28.dp)
+                    onClick = { onRemoveQuery(query.id) }
                 ) {
                     Icon(
                         Icons.Default.Delete,

@@ -410,4 +410,15 @@
     <string name="edit_widget_http_url_label">URL de punto final HTTP</string>
     <string name="edit_widget_sql_query_label">Consulta SQL</string>
     <string name="edit_widget_update_failed">Error al actualizar el widget</string>
+    <string name="auth_all_fields_required">Todos los campos son obligatorios.</string>
+    <string name="auth_passwords_do_not_match">Las contraseñas no coinciden.</string>
+    <string name="auth_password_too_short">La contraseña debe tener al menos 6 caracteres.</string>
+    <string name="auth_register_success">¡Cuenta creada con éxito! Por favor inicie sesión.</string>
+    <string name="auth_email_exists">Ya existe una cuenta con este correo electrónico.</string>
+    <string name="auth_email_already_registered">Correo electrónico ya registrado</string>
+    <string name="auth_invalid_credentials">Nombre de usuario o contraseña inválidos.</string>
+    <string name="auth_network_timeout">Tiempo de espera agotado. Verifique su conexión.</string>
+    <string name="alert_rule_unit_required">La categoría de unidad es obligatoria</string>
+    <string name="alert_rule_threshold_range">El umbral debe estar entre 1 y 100</string>
+    <string name="wizard_title_required">El título es obligatorio</string>
     </resources>

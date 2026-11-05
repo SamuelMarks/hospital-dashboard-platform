@@ -129,6 +129,18 @@ class PulseQueryErrorTest {
 
         val exec = PulseQueryError.Command.ExecutionFailed("Database locked")
         assertEquals("Command execution failed: Database locked", exec.message)
+
+        val reqField = PulseQueryError.Validation.RequiredField("email")
+        assertEquals("email", reqField.field)
+        assertEquals("email is required", reqField.message)
+
+        val reqCustom = PulseQueryError.Validation.RequiredField("title", "Title is required")
+        assertEquals("title", reqCustom.field)
+        assertEquals("Title is required", reqCustom.message)
+
+        val invalidVal = PulseQueryError.Validation.InvalidValue("threshold", "Threshold must be between 1 and 100")
+        assertEquals("threshold", invalidVal.field)
+        assertEquals("Threshold must be between 1 and 100", invalidVal.message)
     }
 
     @Test

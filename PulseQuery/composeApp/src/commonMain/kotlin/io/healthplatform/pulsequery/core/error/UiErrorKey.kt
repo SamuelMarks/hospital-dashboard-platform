@@ -128,7 +128,40 @@ enum class UiErrorKey(
     INVITE_COLLABORATOR("failed_to_load_data", "Failed to invite user"),
 
     /** Fallback when revoking a dashboard share fails. */
-    REVOKE_COLLABORATOR("failed_to_load_data", "Failed to revoke share");
+    REVOKE_COLLABORATOR("failed_to_load_data", "Failed to revoke share"),
+
+    /** All registration fields are required. */
+    AUTH_ALL_FIELDS_REQUIRED("auth_all_fields_required", "All fields are required."),
+
+    /** Password and confirmation password do not match. */
+    AUTH_PASSWORDS_DO_NOT_MATCH("auth_passwords_do_not_match", "Passwords do not match."),
+
+    /** Password length is below the 6-character minimum. */
+    AUTH_PASSWORD_TOO_SHORT("auth_password_too_short", "Password must be at least 6 characters."),
+
+    /** Registration succeeded confirmation prompt. */
+    AUTH_REGISTER_SUCCESS("auth_register_success", "Account created successfully! Please sign in."),
+
+    /** Account with email already exists. */
+    AUTH_EMAIL_EXISTS("auth_email_exists", "An account with this email already exists."),
+
+    /** Email already registered during inline registration. */
+    AUTH_EMAIL_ALREADY_REGISTERED("auth_email_already_registered", "Email already registered"),
+
+    /** Invalid username or password during login. */
+    AUTH_INVALID_CREDENTIALS("auth_invalid_credentials", "Invalid username or password."),
+
+    /** Network timeout user-facing message. */
+    AUTH_NETWORK_TIMEOUT("auth_network_timeout", "Network timeout. Please check your connection."),
+
+    /** Unit category is required when creating or updating an alert rule. */
+    ALERT_RULE_UNIT_REQUIRED("alert_rule_unit_required", "Unit category is required"),
+
+    /** Alert rule threshold must be between 1 and 100. */
+    ALERT_RULE_THRESHOLD_RANGE("alert_rule_threshold_range", "Threshold must be between 1 and 100"),
+
+    /** Widget title is required in the wizard. */
+    WIZARD_TITLE_REQUIRED("wizard_title_required", "Title is required");
 
     /**
      * Companion utilities for mapping [PulseQueryError] subtypes to [UiErrorKey].

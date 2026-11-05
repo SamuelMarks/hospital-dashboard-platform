@@ -90,7 +90,10 @@ export class KeyboardShortcutsService implements OnDestroy {
    */
   readonly isHelpVisible: Signal<boolean> = this._isHelpVisible.asReadonly();
 
-  /** Constructor. */ constructor() {
+  /**
+   * Initializes default application shortcuts and attaches the global keydown listener when running in a browser.
+   */
+  constructor() {
     if (isPlatformBrowser(this.platformId)) {
       this.initializeDefaultShortcuts();
       this.attachGlobalListener();
@@ -147,6 +150,9 @@ export class KeyboardShortcutsService implements OnDestroy {
    * Opens the dialog via dynamic import to avoid circular dependency at module load time.
    */
   showHelp(): void {
+    if (this._isHelpVisible()) {
+      return;
+    }
     this._isHelpVisible.set(true);
 
     runInInjectionContext(this.injector, async () => {
@@ -285,16 +291,18 @@ export class KeyboardShortcutsService implements OnDestroy {
    * @param event - The keyboard event to process.
    */
   private handleKeyboardEvent(event: KeyboardEvent): void {
-    const target = event.target as HTMLElement;
-    const isTyping =
-      target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+    const rawKey = event.key.toLowerCase();
+    if (rawKey === 'shift' || rawKey === 'control' || rawKey === 'alt' || rawKey === 'meta') {
+      return;
+    }
 
-    if (isTyping) {
-      // Allow ? to open help even while typing
-      if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey) {
-        event.preventDefault();
-        this.showHelp();
-      }
+    const target = event.target;
+    if (this.isTypingTarget(target)) {
+      return;
+    }
+
+    const hasCommandModifier = event.ctrlKey || event.metaKey || event.altKey;
+    if (!hasCommandModifier && this.isAdhocQueryContext(target)) {
       return;
     }
 
@@ -309,6 +317,45 @@ export class KeyboardShortcutsService implements OnDestroy {
   }
 
   /**
+   * Determines whether the event target is an editable text input, textarea, select, or CodeMirror surface.
+   *
+   * @param target - DOM event target receiving the keyboard event.
+   * @returns True when the user is actively typing in an editable control.
+   */
+  private isTypingTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) {
+      return false;
+    }
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable
+    ) {
+      return true;
+    }
+    return (
+      target.closest(
+        'input, textarea, select, [contenteditable="true"], [contenteditable=""], .cm-editor, [role="textbox"], [role="searchbox"], [role="combobox"]',
+      ) !== null
+    );
+  }
+
+  /**
+   * Determines whether the keyboard event originated inside the ad-hoc query interface
+   * (`AskDataComponent`, `SqlBuilderComponent`, `ConversationComponent`, or `ChatLayoutComponent`).
+   *
+   * @param target - DOM event target receiving the keyboard event.
+   * @returns True when inside an ad-hoc query container.
+   */
+  private isAdhocQueryContext(target: EventTarget | null): boolean {
+    return (
+      target instanceof HTMLElement &&
+      target.closest('app-ask-data, app-sql-builder, app-conversation, app-chat-layout') !== null
+    );
+  }
+
+  /**
    * Extracts a normalized key combination string from a keyboard event.
    *
    * @param event - The keyboard event.
@@ -319,12 +366,9 @@ export class KeyboardShortcutsService implements OnDestroy {
 
     if (event.ctrlKey || event.metaKey) parts.push('mod');
     if (event.altKey) parts.push('alt');
-    if (event.shiftKey && event.key !== 'Shift' && event.key !== '?') parts.push('shift');
+    if (event.shiftKey && event.key !== '?') parts.push('shift');
 
-    const key = event.key.toLowerCase();
-    if (key !== 'control' && key !== 'alt' && key !== 'shift' && key !== 'meta') {
-      parts.push(key);
-    }
+    parts.push(event.key.toLowerCase());
 
     return parts.sort().join('+');
   }

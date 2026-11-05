@@ -44,14 +44,24 @@ export interface TableConfig {
         display: flex;
         flex-direction: column;
         height: 100%;
+        width: 100%;
+        min-height: 0;
+        min-width: 0;
         overflow: hidden;
       }
       .table-container {
-        flex-grow: 1;
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: 100%;
+        min-height: 0;
         overflow: auto;
+        -webkit-overflow-scrolling: touch;
       }
       table {
         width: 100%;
+        min-width: max-content;
+        table-layout: auto;
+        border-collapse: collapse;
         background-color: var(--sys-surface);
       }
       th.mat-header-cell {
@@ -63,12 +73,16 @@ export interface TableConfig {
         letter-spacing: 0.04em;
         padding: 8px 12px;
         white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 1;
       }
       td.mat-cell {
         color: var(--sys-on-surface);
         border-bottom-color: var(--sys-surface-variant);
         padding: 8px 12px;
         font-size: 13px;
+        white-space: nowrap;
       }
       tr.mat-mdc-row:hover {
         background-color: color-mix(in srgb, var(--sys-primary) 6%, transparent);

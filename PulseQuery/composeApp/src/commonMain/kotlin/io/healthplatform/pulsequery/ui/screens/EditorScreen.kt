@@ -54,6 +54,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import io.healthplatform.pulsequery.api.models.SqlScalar
 import io.healthplatform.pulsequery.ui.screens.editor.EditorUiState
 import io.healthplatform.pulsequery.ui.screens.editor.EditorViewModel
 import io.healthplatform.pulsequery.ui.screens.editor.SaveQueryDialog
@@ -309,7 +310,7 @@ private fun EditorContentBody(
  * @param row Key-value map representing a single SQL result row.
  */
 @Composable
-private fun EditorResultRowCard(row: Map<String, Any?>) {
+private fun EditorResultRowCard(row: Map<String, SqlScalar?>) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)

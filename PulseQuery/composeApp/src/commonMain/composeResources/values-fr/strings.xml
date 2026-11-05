@@ -410,4 +410,15 @@
     <string name="edit_widget_http_url_label">URL du point de terminaison HTTP</string>
     <string name="edit_widget_sql_query_label">Requête SQL</string>
     <string name="edit_widget_update_failed">Échec de la mise à jour du widget</string>
+    <string name="auth_all_fields_required">Tous les champs sont obligatoires.</string>
+    <string name="auth_passwords_do_not_match">Les mots de passe ne correspondent pas.</string>
+    <string name="auth_password_too_short">Le mot de passe doit contenir au moins 6 caractères.</string>
+    <string name="auth_register_success">Compte créé avec succès ! Veuillez vous connecter.</string>
+    <string name="auth_email_exists">Un compte avec cette adresse e-mail existe déjà.</string>
+    <string name="auth_email_already_registered">Adresse e-mail déjà enregistrée</string>
+    <string name="auth_invalid_credentials">Nom d'utilisateur ou mot de passe invalide.</string>
+    <string name="auth_network_timeout">Délai réseau dépassé. Veuillez vérifier votre connexion.</string>
+    <string name="alert_rule_unit_required">La catégorie d'unité est obligatoire</string>
+    <string name="alert_rule_threshold_range">Le seuil doit être compris entre 1 et 100</string>
+    <string name="wizard_title_required">Le titre est obligatoire</string>
     </resources>

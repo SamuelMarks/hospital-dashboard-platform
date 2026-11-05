@@ -137,6 +137,26 @@ just_a_col
   )
 
 
+def test_extract_and_validate_sql_multiple_blocks_and_comments() -> None:
+  """Skips invalid first SQL block and extracts the first valid DuckDB query with SQL comments."""
+  multi_block = """
+First an invalid block:
+```sql
+SELECT FROM WHERE (((
+```
+Now a valid query with inline comments:
+```sql
+-- Calculate average length of stay per unit
+SELECT Unit, AVG(LOS) AS avg_los
+FROM hospital_data
+GROUP BY Unit;
+```
+"""
+  extracted = chat_router._extract_and_validate_sql(multi_block)
+  assert extracted is not None
+  assert "SELECT Unit, AVG(LOS) AS avg_los" in extracted
+
+
 @pytest.mark.asyncio
 async def test_generate_assistant_reply_with_target_models(db_session: AsyncSession, chat_user: User) -> None:
   """Tests behavior when specific target models are provided."""
@@ -464,7 +484,21 @@ async def test_send_message_success(client: AsyncClient, chat_user: User, db_ses
 
 @pytest.mark.asyncio
 async def test_vote_candidate_not_found_cases(client: AsyncClient, chat_user: User, db_session: AsyncSession) -> None:
-  """Covers conversation, message, and candidate not found branches."""
+  """Covers conversation, message, and candidate not found branches and asserts exact `AppError.code` values."""
+  from app.core.result import Err, ErrorCode
+  from app.schemas.chat import MessageVoteRequest
+  from app.services.chat_service import chat_service
+
+  missing_conv_res = await chat_service.vote_candidate_result(
+    uuid.uuid4(),
+    uuid.uuid4(),
+    MessageVoteRequest(candidate_id=uuid.uuid4()),
+    chat_user,
+    db_session,
+  )
+  assert isinstance(missing_conv_res, Err)
+  assert missing_conv_res.error.code == ErrorCode.CONVERSATION_NOT_FOUND
+
   res_missing_conv = await client.post(
     f"/api/v1/conversations/{uuid.uuid4()}/messages/{uuid.uuid4()}/vote", json={"candidate_id": str(uuid.uuid4())}
   )
@@ -473,6 +507,16 @@ async def test_vote_candidate_not_found_cases(client: AsyncClient, chat_user: Us
   conv = Conversation(user_id=chat_user.id, title="Test")
   db_session.add(conv)
   await db_session.commit()
+
+  missing_msg_res = await chat_service.vote_candidate_result(
+    conv.id,
+    uuid.uuid4(),
+    MessageVoteRequest(candidate_id=uuid.uuid4()),
+    chat_user,
+    db_session,
+  )
+  assert isinstance(missing_msg_res, Err)
+  assert missing_msg_res.error.code == ErrorCode.MESSAGE_NOT_FOUND
 
   res_missing_msg = await client.post(
     f"/api/v1/conversations/{conv.id}/messages/{uuid.uuid4()}/vote", json={"candidate_id": str(uuid.uuid4())}
@@ -483,6 +527,16 @@ async def test_vote_candidate_not_found_cases(client: AsyncClient, chat_user: Us
   db_session.add(msg)
   await db_session.commit()
   await db_session.refresh(msg)
+
+  missing_cand_res = await chat_service.vote_candidate_result(
+    conv.id,
+    msg.id,
+    MessageVoteRequest(candidate_id=uuid.uuid4()),
+    chat_user,
+    db_session,
+  )
+  assert isinstance(missing_cand_res, Err)
+  assert missing_cand_res.error.code == ErrorCode.CANDIDATE_NOT_FOUND
 
   res_missing_candidate = await client.post(
     f"/api/v1/conversations/{conv.id}/messages/{msg.id}/vote", json={"candidate_id": str(uuid.uuid4())}

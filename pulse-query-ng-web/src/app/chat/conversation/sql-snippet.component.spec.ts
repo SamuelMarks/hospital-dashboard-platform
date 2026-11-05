@@ -77,11 +77,12 @@ describe('SqlSnippetComponent', () => {
     expect(html).toContain('<span class="string">\'TEXT\'</span>');
   });
 
-  it('should highlight comments', () => {
-    sqlSig.set('SELECT 1 -- Note');
+  it('should highlight comments and functions without corrupting keywords or quotes inside comments', () => {
+    sqlSig.set("SELECT count(1) -- Note: SELECT 'gemma:2b' 10");
     fixture.detectChanges();
     const html = component.highlightedSql();
-    expect(html).toContain('<span class="comment">-- Note</span>');
+    expect(html).toContain('<span class="function">count</span>');
+    expect(html).toContain('<span class="comment">-- Note: SELECT \'gemma:2b\' 10</span>');
   });
 
   it('should copy to clipboard', () => {

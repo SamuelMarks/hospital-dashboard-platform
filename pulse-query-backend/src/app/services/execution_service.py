@@ -561,7 +561,8 @@ class ExecutionService:
       res = await asyncio.to_thread(self._execute_single_sql_sync, run_config, sql_runner_fn, conn_factory)
       if has_interactive_meta:
         raw_query = run_config.get("query")
-        res["generated_sql"] = str(raw_query) if raw_query is not None else None
+        is_direct_sql = effective_processor.strip().upper() == "SQL"
+        res["generated_sql"] = None if is_direct_sql else (str(raw_query) if raw_query is not None else None)
         res["processor_used"] = effective_processor
         res["natural_text"] = effective_text
       return res

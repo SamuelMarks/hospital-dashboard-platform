@@ -2,7 +2,7 @@
  * @fileoverview Layout container component for the conversational AI workspace,
  * combining conversation history navigation, the active chat view, and the query cart.
  */
-import { DATE_NOW } from '../core/time.token';
+import { DATE_NOW, parseIsoDate } from '../core/time.token';
 import { Component, OnInit, inject, viewChild, computed, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
@@ -182,8 +182,8 @@ export class ChatLayoutComponent implements OnInit {
     const today: ConversationResponse[] = [],
       older: ConversationResponse[] = [];
     list.forEach((c) => {
-      const d = new Date(c.updated_at);
-      if (d.toDateString() === todayStr) today.push(c);
+      const d = parseIsoDate(c.updated_at);
+      if (d?.toDateString() === todayStr) today.push(c);
       else older.push(c);
     });
     const groups = [];

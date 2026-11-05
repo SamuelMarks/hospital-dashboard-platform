@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.i18n import get_translated_message
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok, unwrap_or_raise_http
 from app.database.postgres import get_db
 from app.models.dashboard import Dashboard
@@ -43,6 +44,7 @@ async def resolve_user_from_token_result(token: str, db: AsyncSession) -> AppRes
   Returns:
       AppResult[User]: `Ok(user)` if valid and active, or `Err(AppError)` with reason details.
   """
+  cred_err_msg = get_translated_message(None, "error.credentials_validation_failed", "Could not validate credentials")
   try:
     payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     user_id_str: str | None = payload.get("sub")
@@ -50,7 +52,7 @@ async def resolve_user_from_token_result(token: str, db: AsyncSession) -> AppRes
       return Err(
         AppError(
           code=ErrorCode.AUTHENTICATION_ERROR,
-          message="Could not validate credentials",
+          message=cred_err_msg,
           status_code=status.HTTP_401_UNAUTHORIZED,
           details={"ws_reason": "Unauthorized: Invalid token payload"},
         )
@@ -61,7 +63,7 @@ async def resolve_user_from_token_result(token: str, db: AsyncSession) -> AppRes
     return Err(
       AppError(
         code=ErrorCode.AUTHENTICATION_ERROR,
-        message="Could not validate credentials",
+        message=cred_err_msg,
         status_code=status.HTTP_401_UNAUTHORIZED,
         details={"ws_reason": "Unauthorized: Could not validate credentials"},
       )
@@ -74,7 +76,7 @@ async def resolve_user_from_token_result(token: str, db: AsyncSession) -> AppRes
     return Err(
       AppError(
         code=ErrorCode.AUTHENTICATION_ERROR,
-        message="Could not validate credentials",
+        message=cred_err_msg,
         status_code=status.HTTP_401_UNAUTHORIZED,
         details={"ws_reason": "Unauthorized: Inactive or non-existent user"},
       )
@@ -84,7 +86,7 @@ async def resolve_user_from_token_result(token: str, db: AsyncSession) -> AppRes
     return Err(
       AppError(
         code=ErrorCode.AUTH_INACTIVE_USER,
-        message="Inactive user",
+        message=get_translated_message(None, "error.inactive_user", "Inactive user"),
         status_code=status.HTTP_400_BAD_REQUEST,
         details={"ws_reason": "Unauthorized: Inactive or non-existent user"},
       )

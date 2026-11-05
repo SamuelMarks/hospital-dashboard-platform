@@ -25,11 +25,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -53,6 +52,11 @@ import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ui.screens.wizard.mapModelInfoToProcessorSelection
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -230,6 +234,205 @@ internal suspend fun submitWidgetUpdate(
 }
 
 /**
+ * Immutable UI state for [EditWidgetDialog] managed by [EditWidgetViewModel].
+ *
+ * @property title Current editable widget title.
+ * @property subtitle Current editable widget subtitle/caption.
+ * @property selectedViz Currently selected visualization type string.
+ * @property showVizDropdown Whether the visualization selector dropdown is expanded.
+ * @property allowNaturalText Whether user natural-text querying is enabled on the widget.
+ * @property selectedProcessor Selected [ProcessorId] for SQL/LLM execution.
+ * @property naturalTextPrompt Default natural-text prompt string.
+ * @property showProcessorDropdown Whether the processor selector dropdown is expanded.
+ * @property availableProcessors List of selectable [ProcessorSelectionOption] choices.
+ * @property queryOrContent Primary SQL query, Markdown text, or HTTP URL string.
+ * @property isLoading Whether a save operation is currently in flight.
+ * @property errorMessage Optional validation or API error message.
+ */
+data class EditWidgetUiState(
+    val title: String = "",
+    val subtitle: String = "",
+    val selectedViz: String = "table",
+    val showVizDropdown: Boolean = false,
+    val allowNaturalText: Boolean = false,
+    val selectedProcessor: ProcessorId = ProcessorId.SQL_NO_MODEL,
+    val naturalTextPrompt: String = "",
+    val showProcessorDropdown: Boolean = false,
+    val availableProcessors: List<ProcessorSelectionOption> = listOf(ProcessorSelectionOption.SQL_DEFAULT),
+    val queryOrContent: String = "",
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null
+)
+
+/**
+ * ViewModel managing form state, processor discovery, validation, and widget updates for [EditWidgetDialog].
+ *
+ * @property widget Target [WidgetResponse] being edited.
+ * @property scope Coroutine scope used for asynchronous API operations.
+ * @property dashboardsApi Optional explicit [DashboardsApi] client.
+ * @property aiApi Optional explicit [AiApi] client.
+ */
+class EditWidgetViewModel(
+    private val widget: WidgetResponse,
+    private val scope: CoroutineScope,
+    private val dashboardsApi: DashboardsApi?,
+    private val aiApi: AiApi?
+) {
+    private val sqlConfig = extractWidgetSqlConfig(widget.config)
+    private val _state = MutableStateFlow(
+        EditWidgetUiState(
+            title = widget.title,
+            subtitle = extractWidgetSubtitle(widget).orEmpty(),
+            selectedViz = widget.visualization.lowercase(),
+            allowNaturalText = sqlConfig.allowNaturalText,
+            selectedProcessor = sqlConfig.processor,
+            naturalTextPrompt = sqlConfig.naturalTextPrompt,
+            queryOrContent = extractInitialWidgetContent(widget)
+        )
+    )
+
+    /** Reactive [StateFlow] of the current [EditWidgetUiState]. */
+    val state: StateFlow<EditWidgetUiState> = _state.asStateFlow()
+
+    /**
+     * Loads available AI and SQL processors from [AiApi].
+     */
+    suspend fun loadAvailableProcessors() {
+        val resolvedAiApi = aiApi ?: AppContainer.aiApi
+        runResultPulseAsync {
+            resolvedAiApi.listAvailableModelsApiV1AiModelsGet(includeSql = true, discoverOllama = true).asResult()
+        }.onSuccess { models ->
+            _state.update { it.copy(availableProcessors = resolveAvailableProcessors(models)) }
+        }
+    }
+
+    /**
+     * Updates the editable widget title.
+     *
+     * @param newTitle Updated title string.
+     */
+    fun updateTitle(newTitle: String) {
+        _state.update { it.copy(title = newTitle) }
+    }
+
+    /**
+     * Updates the editable widget subtitle.
+     *
+     * @param newSubtitle Updated subtitle string.
+     */
+    fun updateSubtitle(newSubtitle: String) {
+        _state.update { it.copy(subtitle = newSubtitle) }
+    }
+
+    /**
+     * Selects a visualization type and collapses the visualization dropdown.
+     *
+     * @param viz Visualization type string.
+     */
+    fun selectVisualization(viz: String) {
+        _state.update { it.copy(selectedViz = viz, showVizDropdown = false) }
+    }
+
+    /**
+     * Sets whether the visualization dropdown menu is expanded.
+     *
+     * @param expanded True when expanded.
+     */
+    fun setVizDropdownExpanded(expanded: Boolean) {
+        _state.update { it.copy(showVizDropdown = expanded) }
+    }
+
+    /**
+     * Updates whether user natural-text querying is enabled on the widget.
+     *
+     * @param enabled True when enabled.
+     */
+    fun updateAllowNaturalText(enabled: Boolean) {
+        _state.update { it.copy(allowNaturalText = enabled) }
+    }
+
+    /**
+     * Selects a [ProcessorId] and collapses the processor dropdown.
+     *
+     * @param processorId Selected [ProcessorId].
+     */
+    fun selectProcessor(processorId: ProcessorId) {
+        _state.update { it.copy(selectedProcessor = processorId, showProcessorDropdown = false) }
+    }
+
+    /**
+     * Sets whether the processor dropdown menu is expanded.
+     *
+     * @param expanded True when expanded.
+     */
+    fun setProcessorDropdownExpanded(expanded: Boolean) {
+        _state.update { it.copy(showProcessorDropdown = expanded) }
+    }
+
+    /**
+     * Updates the default natural-text prompt string.
+     *
+     * @param prompt Updated prompt string.
+     */
+    fun updateNaturalTextPrompt(prompt: String) {
+        _state.update { it.copy(naturalTextPrompt = prompt) }
+    }
+
+    /**
+     * Updates the primary SQL query, Markdown text, or HTTP URL content.
+     *
+     * @param content Updated content string.
+     */
+    fun updateQueryOrContent(content: String) {
+        _state.update { it.copy(queryOrContent = content) }
+    }
+
+    /**
+     * Validates the current form state and submits the widget update to [DashboardsApi].
+     *
+     * @param blankTitleError Localized validation message when title is blank.
+     * @param onWidgetUpdated Callback invoked with the updated [WidgetResponse] on success.
+     */
+    fun submit(blankTitleError: String, onWidgetUpdated: (WidgetResponse) -> Unit) {
+        val current = _state.value
+        if (current.title.isBlank()) {
+            _state.update { it.copy(errorMessage = blankTitleError) }
+            return
+        }
+        scope.launch {
+            _state.update { it.copy(isLoading = true, errorMessage = null) }
+            val api = dashboardsApi ?: AppContainer.dashboardsApi
+            val updateReq = buildWidgetUpdatePayload(
+                widget = widget,
+                title = current.title,
+                subtitle = current.subtitle,
+                selectedViz = current.selectedViz,
+                sqlConfig = TypedWidgetConfig.Sql(
+                    query = current.queryOrContent,
+                    allowNaturalText = current.allowNaturalText,
+                    processor = current.selectedProcessor,
+                    naturalTextPrompt = current.naturalTextPrompt
+                )
+            )
+            submitWidgetUpdate(api, widget.id, updateReq).fold(
+                onSuccess = { updated ->
+                    _state.update { it.copy(isLoading = false) }
+                    onWidgetUpdated(updated)
+                },
+                onFailure = { e ->
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = e.messageOrDefault(UiErrorKey.UPDATE_WIDGET_FAILED)
+                        )
+                    }
+                }
+            )
+        }
+    }
+}
+
+/**
  * Dialog allowing clinicians and analysts to modify an existing dashboard widget's configuration.
  *
  * @param widget The target [WidgetResponse] to edit.
@@ -247,30 +450,19 @@ fun EditWidgetDialog(
     dashboardsApi: DashboardsApi? = null,
     aiApi: AiApi? = null
 ) {
-    var title by remember { mutableStateOf(widget.title) }
-    var subtitle by remember { mutableStateOf(extractWidgetSubtitle(widget).orEmpty()) }
-    var selectedViz by remember { mutableStateOf(widget.visualization.lowercase()) }
-    var showVizDropdown by remember { mutableStateOf(false) }
-
-    val sqlConfig = extractWidgetSqlConfig(widget.config)
-    var allowNaturalText by remember { mutableStateOf(sqlConfig.allowNaturalText) }
-    var selectedProcessor by remember { mutableStateOf(sqlConfig.processor) }
-    var naturalTextPrompt by remember { mutableStateOf(sqlConfig.naturalTextPrompt) }
-    var showProcessorDropdown by remember { mutableStateOf(false) }
-    var availableProcessors by remember { mutableStateOf(listOf(ProcessorSelectionOption.SQL_DEFAULT)) }
-    var queryOrContent by remember { mutableStateOf(extractInitialWidgetContent(widget)) }
-
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val viewModel = remember(widget, dashboardsApi, aiApi) {
+        EditWidgetViewModel(
+            widget = widget,
+            scope = scope,
+            dashboardsApi = dashboardsApi,
+            aiApi = aiApi
+        )
+    }
+    val state by viewModel.state.collectAsState()
 
-    LaunchedEffect(aiApi) {
-        val resolvedAiApi = aiApi ?: AppContainer.aiApi
-        runResultPulseAsync {
-            resolvedAiApi.listAvailableModelsApiV1AiModelsGet(includeSql = true, discoverOllama = true).asResult()
-        }.onSuccess { models ->
-            availableProcessors = resolveAvailableProcessors(models)
-        }
+    LaunchedEffect(viewModel) {
+        viewModel.loadAvailableProcessors()
     }
 
     val blankTitleError = stringResource(Res.string.edit_widget_title_blank_error)
@@ -281,69 +473,38 @@ fun EditWidgetDialog(
         text = {
             EditWidgetDialogForm(
                 widgetType = widget.type,
-                title = title,
-                onTitleChange = { title = it },
-                subtitle = subtitle,
-                onSubtitleChange = { subtitle = it },
-                selectedViz = selectedViz,
-                onSelectViz = {
-                    selectedViz = it
-                    showVizDropdown = false
-                },
-                showVizDropdown = showVizDropdown,
-                onVizDropdownExpandedChange = { showVizDropdown = it },
-                allowNaturalText = allowNaturalText,
-                onAllowNaturalTextChange = { allowNaturalText = it },
-                selectedProcessor = selectedProcessor,
-                onSelectProcessor = {
-                    selectedProcessor = it
-                    showProcessorDropdown = false
-                },
-                showProcessorDropdown = showProcessorDropdown,
-                onProcessorDropdownExpandedChange = { showProcessorDropdown = it },
-                availableProcessors = availableProcessors,
-                naturalTextPrompt = naturalTextPrompt,
-                onNaturalTextPromptChange = { naturalTextPrompt = it },
-                queryOrContent = queryOrContent,
-                onQueryOrContentChange = { queryOrContent = it },
-                errorMessage = errorMessage
+                title = state.title,
+                onTitleChange = viewModel::updateTitle,
+                subtitle = state.subtitle,
+                onSubtitleChange = viewModel::updateSubtitle,
+                selectedViz = state.selectedViz,
+                onSelectViz = viewModel::selectVisualization,
+                showVizDropdown = state.showVizDropdown,
+                onVizDropdownExpandedChange = viewModel::setVizDropdownExpanded,
+                allowNaturalText = state.allowNaturalText,
+                onAllowNaturalTextChange = viewModel::updateAllowNaturalText,
+                selectedProcessor = state.selectedProcessor,
+                onSelectProcessor = viewModel::selectProcessor,
+                showProcessorDropdown = state.showProcessorDropdown,
+                onProcessorDropdownExpandedChange = viewModel::setProcessorDropdownExpanded,
+                availableProcessors = state.availableProcessors,
+                naturalTextPrompt = state.naturalTextPrompt,
+                onNaturalTextPromptChange = viewModel::updateNaturalTextPrompt,
+                queryOrContent = state.queryOrContent,
+                onQueryOrContentChange = viewModel::updateQueryOrContent,
+                errorMessage = state.errorMessage
             )
         },
         confirmButton = {
             EditWidgetDialogConfirmButton(
-                isLoading = isLoading,
+                isLoading = state.isLoading,
                 onConfirm = {
-                    if (title.isBlank()) {
-                        errorMessage = blankTitleError
-                    } else {
-                        scope.launch {
-                            isLoading = true
-                            errorMessage = null
-                            val api = dashboardsApi ?: AppContainer.dashboardsApi
-                            val updateReq = buildWidgetUpdatePayload(
-                                widget = widget,
-                                title = title,
-                                subtitle = subtitle,
-                                selectedViz = selectedViz,
-                                sqlConfig = TypedWidgetConfig.Sql(
-                                    query = queryOrContent,
-                                    allowNaturalText = allowNaturalText,
-                                    processor = selectedProcessor,
-                                    naturalTextPrompt = naturalTextPrompt
-                                )
-                            )
-                            submitWidgetUpdate(api, widget.id, updateReq).fold(
-                                onSuccess = { updated -> onWidgetUpdated(updated) },
-                                onFailure = { e -> errorMessage = e.messageOrDefault(UiErrorKey.UPDATE_WIDGET_FAILED) }
-                            )
-                            isLoading = false
-                        }
-                    }
+                    viewModel.submit(blankTitleError = blankTitleError, onWidgetUpdated = onWidgetUpdated)
                 }
             )
         },
         dismissButton = {
-            EditWidgetDialogDismissButton(isLoading = isLoading, onDismiss = onDismiss)
+            EditWidgetDialogDismissButton(isLoading = state.isLoading, onDismiss = onDismiss)
         }
     )
 }

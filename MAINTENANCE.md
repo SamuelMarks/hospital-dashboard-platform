@@ -21,9 +21,9 @@ The project strictly adheres to **Contract-First Development**. The Frontend API
       ```bash
       ./generate_client.sh
       ```
-    - _Action:_ This updates `pulse-query-ng-web/src/app/api-client` with new TypeScript interfaces and Services.
+    - _Action:_ This updates both `pulse-query-ng-web/src/app/api-client` (TypeScript interfaces and Angular Services) and `PulseQuery/composeApp/src/commonMain/kotlin/io/healthplatform/pulsequery/api` (Kotlin Multiplatform Ktor APIs and `kotlinx.serialization` models), then runs `scripts/normalize_api_client.py` to enforce 100% doc coverage.
 3.  **Frontend Implementation:**
-    - Inject the generated Service (e.g., `ExecutionService`) into your Angular components or Stores.
+    - Inject the generated Service (e.g., `ExecutionService` in Angular or `ExecutionApi` in KMP) into your components, ViewModels, or Stores.
 
 ---
 
@@ -61,7 +61,19 @@ Located in `pulse-query-ng-web/src/**/*.spec.ts`. Focuses on Signal-based state 
   - `dashboard.store.spec.ts`: Verifies the RxJS `switchMap` pipelines handling race conditions during data refreshing.
   - `global-error.handler.spec.ts`: Ensures the global error bus correctly captures and displays SnackBar notifications.
 
-### 3. E2E Tests (Playwright)
+### 3. Kotlin Multiplatform Tests (Gradle + Kover + Detekt)
+
+Located in `PulseQuery/composeApp/src/commonTest` and `PulseQuery/composeApp/src/jvmTest`. Focuses on MVI/MVVM state flows, Ktor API integration, LiteRT ODML verification, and SQLDelight offline caching.
+
+- **Command:**
+  ```bash
+  cd PulseQuery
+  ./gradlew detekt check koverVerify
+  ```
+- **Coverage:**
+  - Enforces 100% line, instruction, and branch coverage via Kover alongside zero Detekt findings and 100% KDoc coverage.
+
+### 4. E2E Tests (Playwright)
 
 Located in `e2e/`. Simulates critical user journeys against a running full-stack environment.
 
@@ -136,7 +148,7 @@ The frontend uses a "Dumb Component" strategy for visualizations. To add a new t
 
 ### Zoneless Architecture
 
-The application uses **Experimental Zoneless Change Detection**.
+The application uses **Zoneless Change Detection** (`provideZonelessChangeDetection()` in Angular 22).
 
 - **Do not** rely on `NgZone.run()`.
 - **Do** use `signal`, `computed`, and `AsyncPipe` (or `@if` with observables).

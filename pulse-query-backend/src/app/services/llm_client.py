@@ -1144,6 +1144,64 @@ class LLMArenaClient:
 # Singleton instance
 llm_client = LLMArenaClient()
 
+
+async def pad_arena_responses(
+  arena_client: LLMArenaClient,
+  messages: list[dict[str, str]],
+  target_count: int = 3,
+  temperature: float = 0.7,
+  max_tokens: int = 1000,
+  target_model_ids: list[str] | None = None,
+  admin_settings: AdminSettingsResponse | None = None,
+  initial_responses: list[ArenaResponse] | None = None,
+) -> list[ArenaResponse]:
+  """
+  Executes `arena_client.generate_arena_competition` and pads candidate responses up to
+  `target_count` (with up to 3 additional attempts and incremental temperature stepping)
+  when at least one model succeeds.
+
+  Args:
+      arena_client (LLMArenaClient): Arena client instance to query.
+      messages (list[dict[str, str]]): OpenAI-formatted conversation history.
+      target_count (int): Desired minimum number of candidate responses.
+      temperature (float): Initial sampling temperature.
+      max_tokens (int): Maximum completion tokens.
+      target_model_ids (list[str] | None): Optional list of specific model IDs to query.
+      admin_settings (AdminSettingsResponse | None): Active administrative settings.
+      initial_responses (list[ArenaResponse] | None): Pre-collected responses (e.g. direct SQL).
+
+  Returns:
+      list[ArenaResponse]: Aggregated list of candidate responses.
+  """
+  responses: list[ArenaResponse] = list(initial_responses) if initial_responses else []
+  arena_res = await arena_client.generate_arena_competition(
+    messages=messages,
+    temperature=temperature,
+    max_tokens=max_tokens,
+    target_model_ids=target_model_ids,
+    admin_settings=admin_settings,
+  )
+  responses.extend(arena_res)
+
+  attempts = 0
+  any_success = any(r.error is None for r in responses)
+  all_local_ollama = bool(arena_res) and all(
+    r.model_identifier.strip().lower().startswith(("ollama:", "ollama/")) for r in arena_res
+  )
+  while len(responses) < target_count and attempts < 3 and any_success and not all_local_ollama:
+    attempts += 1
+    more = await arena_client.generate_arena_competition(
+      messages=messages,
+      temperature=temperature + (attempts * 0.1),
+      max_tokens=max_tokens,
+      target_model_ids=target_model_ids,
+      admin_settings=admin_settings,
+    )
+    if more:
+      responses.extend(more)
+  return responses
+
+
 __all__ = [
   "ArenaResponse",
   "CompletionChunkProtocol",
@@ -1166,4 +1224,5 @@ __all__ = [
   "_pump_stream_to_queue",
   "httpx",
   "llm_client",
+  "pad_arena_responses",
 ]

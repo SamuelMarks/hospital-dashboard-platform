@@ -410,4 +410,15 @@
     <string name="edit_widget_http_url_label">HTTP Endpoint URL</string>
     <string name="edit_widget_sql_query_label">SQL Query</string>
     <string name="edit_widget_update_failed">Failed to update widget</string>
+    <string name="auth_all_fields_required">All fields are required.</string>
+    <string name="auth_passwords_do_not_match">Passwords do not match.</string>
+    <string name="auth_password_too_short">Password must be at least 6 characters.</string>
+    <string name="auth_register_success">Account created successfully! Please sign in.</string>
+    <string name="auth_email_exists">An account with this email already exists.</string>
+    <string name="auth_email_already_registered">Email already registered</string>
+    <string name="auth_invalid_credentials">Invalid username or password.</string>
+    <string name="auth_network_timeout">Network timeout. Please check your connection.</string>
+    <string name="alert_rule_unit_required">Unit category is required</string>
+    <string name="alert_rule_threshold_range">Threshold must be between 1 and 100</string>
+    <string name="wizard_title_required">Title is required</string>
 </resources>

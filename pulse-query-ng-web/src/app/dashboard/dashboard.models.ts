@@ -1,7 +1,12 @@
 /**
- * Execution payload returned for a `SQL` widget.
- *
  * @fileoverview Strongly typed execution result and configuration models for dashboard widgets.
+ */
+
+import { Observable } from 'rxjs';
+import { ExecutionService } from '../api-client';
+
+/**
+ * Execution payload returned for a `SQL` widget.
  */
 export interface SqlWidgetData {
   /** Tabular row objects keyed by column name. */
@@ -178,4 +183,65 @@ export function extractWidgetColumns(payload: WidgetExecutionPayload): string[] 
     return [];
   }
   return cols.filter((c): c is string => typeof c === 'string');
+}
+
+/**
+ * Optional natural text prompt and processor overrides when refreshing an individual widget.
+ */
+export interface WidgetRefreshOptions {
+  /** Optional natural language prompt or SQL query string. */
+  readonly naturalText?: string;
+  /** Optional processor identifier (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`). */
+  readonly processor?: string;
+}
+
+/**
+ * Invokes `ExecutionService.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost`
+ * while encapsulating the generated OpenAPI client's positional parameters.
+ *
+ * @param executionApi - Generated `ExecutionService` instance.
+ * @param dashboardId - Target dashboard UUID.
+ * @param widgetId - Target widget UUID.
+ * @param forceRefresh - Whether to bypass cached results.
+ * @param globalParams - Active global filter parameters.
+ * @param options - Optional natural text and processor overrides.
+ * @returns Observable emitting the raw single-widget execution response.
+ */
+export function invokeSingleWidgetRefresh(
+  executionApi: Pick<
+    ExecutionService,
+    'refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost'
+  >,
+  dashboardId: string,
+  widgetId: string,
+  forceRefresh: boolean,
+  globalParams: GlobalFilterParams,
+  options?: WidgetRefreshOptions,
+): Observable<unknown> {
+  if (options && (options.naturalText !== undefined || options.processor !== undefined)) {
+    return executionApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(
+      dashboardId,
+      widgetId,
+      forceRefresh,
+      undefined,
+      undefined,
+      undefined,
+      'body',
+      false,
+      {
+        ...(options.naturalText !== undefined ? { naturalText: options.naturalText } : {}),
+        ...(options.processor !== undefined ? { processor: options.processor } : {}),
+        requestBody: {
+          ...globalParams,
+          ...(options.naturalText !== undefined ? { natural_text: options.naturalText } : {}),
+          ...(options.processor !== undefined ? { processor: options.processor } : {}),
+        },
+      },
+    );
+  }
+  return executionApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(
+    dashboardId,
+    widgetId,
+    forceRefresh,
+  );
 }

@@ -42,12 +42,20 @@ describe('VizMarkdownComponent', () => {
     expect(h1.textContent).toBe('Heading 1');
   });
 
-  it('should parse strong text', () => {
-    fixture.componentRef.setInput('content', '**Bold**');
+  it('should parse multiple strong and italic spans and preserve asterisks inside inline code', () => {
+    fixture.componentRef.setInput(
+      'content',
+      '**First** and **Second** with `SELECT * FROM table WHERE a * b > 0` and *italic*',
+    );
     fixture.detectChanges();
-    const strong = fixture.debugElement.query(By.css('strong')).nativeElement as HTMLElement;
-    expect(strong).toBeTruthy();
-    expect(strong.textContent).toBe('Bold');
+    const strongs = fixture.debugElement.queryAll(By.css('strong'));
+    expect(strongs.length).toBe(2);
+    expect((strongs[0]?.nativeElement as HTMLElement).textContent).toBe('First');
+    expect((strongs[1]?.nativeElement as HTMLElement).textContent).toBe('Second');
+    const code = fixture.debugElement.query(By.css('code')).nativeElement as HTMLElement;
+    expect(code.textContent).toBe('SELECT * FROM table WHERE a * b > 0');
+    const em = fixture.debugElement.query(By.css('em')).nativeElement as HTMLElement;
+    expect(em.textContent).toBe('italic');
   });
 
   it('should parse lists', () => {
@@ -83,5 +91,33 @@ Line2`,
     fixture.detectChanges();
     const div = fixture.debugElement.query(By.css('.md-content')).nativeElement as HTMLElement;
     expect(div.innerHTML).toContain('<br>');
+  });
+
+  it('should parse Markdown pipe tables into responsive scrollable HTML tables', () => {
+    fixture.componentRef.setInput(
+      'content',
+      `Executed directly on read-only DuckDB (2 rows returned in 3ms).
+
+| dept | census | note |
+| :--- | :---: | ---: |
+| ICU \\| North | 42 | High |
+| ER | 18 |
+
+| Header without valid separator |
+| invalid_sep |
+| trailing_pipe_row |`,
+    );
+    fixture.detectChanges();
+    const wrapper = fixture.debugElement.query(By.css('.md-table-wrapper'))
+      ?.nativeElement as HTMLElement;
+    expect(wrapper).toBeTruthy();
+    const headers = wrapper.querySelectorAll('th');
+    expect(headers.length).toBe(3);
+    expect(headers[0]?.textContent).toBe('dept');
+    const cells = wrapper.querySelectorAll('td');
+    expect(cells.length).toBe(6);
+    expect(cells[0]?.textContent).toBe('ICU | North');
+    expect(cells[1]?.textContent).toBe('42');
+    expect(cells[5]?.textContent).toBe('');
   });
 });

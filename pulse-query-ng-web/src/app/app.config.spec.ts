@@ -56,7 +56,7 @@ describe('AppConfig', () => {
 
     // Test the injected instance via Module
     const injectedConfig = TestBed.inject(Configuration);
-    expect(injectedConfig).toBeTruthy();
+    expect(injectedConfig).toBeInstanceOf(Configuration);
     expect(injectedConfig.basePath).toBe(environment.apiUrl);
   });
 

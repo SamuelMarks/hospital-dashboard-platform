@@ -2,7 +2,7 @@
  * @fileoverview Pure, stateless grid layout and bin-packing utilities for dashboard widgets.
  */
 
-import { HttpConfig, SqlConfig, TextConfig, WidgetResponse } from '../api-client';
+import { HttpConfig, SqlConfig, TextConfig, WidgetIn, WidgetResponse } from '../api-client';
 
 /**
  * Sorts widgets in ascending order by their `config.order` numeric property.
@@ -160,4 +160,87 @@ export function buildSqlWidgetConfig(config: Record<string, unknown>): SqlConfig
     ...config,
     query: typeof config['query'] === 'string' ? config['query'] : '',
   };
+}
+
+/**
+ * Constructs a typed `WidgetIn` duplication payload and offset configuration from a source `WidgetResponse`.
+ *
+ * @param source - Source widget to duplicate.
+ * @returns Object containing the typed `payload` for the API and the `offsetConfig` dictionary.
+ */
+export function buildDuplicateWidgetPayload(source: WidgetResponse): {
+  payload: WidgetIn;
+  offsetConfig: Record<string, unknown>;
+} {
+  const offsetConfig = offsetWidgetCoordinates(source.config);
+  const copyTitle = $localize`Copy of ${source.title}`;
+
+  if (source.type === 'HTTP') {
+    return {
+      offsetConfig,
+      payload: {
+        title: copyTitle,
+        type: 'HTTP',
+        visualization: source.visualization,
+        config: buildHttpWidgetConfig(offsetConfig),
+      },
+    };
+  }
+  if (source.type === 'TEXT') {
+    return {
+      offsetConfig,
+      payload: {
+        title: copyTitle,
+        type: 'TEXT',
+        visualization: 'markdown',
+        config: buildTextWidgetConfig(offsetConfig),
+      },
+    };
+  }
+  return {
+    offsetConfig,
+    payload: {
+      title: copyTitle,
+      type: 'SQL',
+      visualization: source.visualization,
+      config: buildSqlWidgetConfig(offsetConfig),
+    },
+  };
+}
+
+/**
+ * Constructs an optimistic temporary `WidgetResponse` while widget duplication is in flight.
+ *
+ * @param source - Source widget being duplicated.
+ * @param dashboardId - Target dashboard UUID.
+ * @param tempId - Temporary optimistic widget ID.
+ * @param title - Duplicated widget title.
+ * @param offsetConfig - Offset grid configuration.
+ * @returns Optimistic `WidgetResponse` placeholder.
+ */
+export function buildOptimisticDuplicateWidget(
+  source: WidgetResponse,
+  dashboardId: string,
+  tempId: string,
+  title: string,
+  offsetConfig: Record<string, unknown>,
+): WidgetResponse {
+  return {
+    id: tempId,
+    dashboard_id: dashboardId,
+    title,
+    type: source.type,
+    visualization: source.type === 'TEXT' ? 'markdown' : source.visualization,
+    config: offsetConfig,
+  };
+}
+
+/**
+ * Returns the safe-mode fallback configuration dictionary for a widget being reset.
+ *
+ * @param widget - Target widget being reset to safe mode.
+ * @returns Safe-mode configuration dictionary (`{ query: 'SELECT 1 as SafeMode' }` for SQL, `{}` otherwise).
+ */
+export function buildSafeModeWidgetConfig(widget: WidgetResponse): Record<string, unknown> {
+  return widget.type === 'SQL' ? { query: 'SELECT 1 as SafeMode' } : {};
 }

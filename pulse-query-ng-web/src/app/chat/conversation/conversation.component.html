@@ -61,7 +61,7 @@
 
                     <viz-markdown [content]="cleanContentSimple(cand.content)"></viz-markdown>
 
-                    @if (cand.sql_snippet) {
+                    @if (cand.sql_snippet && !isDirectSqlCandidate(cand)) {
                       <app-sql-snippet
                         class="mt-2"
                         [sql]="cand.sql_snippet"
@@ -105,7 +105,7 @@
           <!-- B: Standard Message -->
           @else {
             <viz-markdown [content]="cleanContent(msg)"></viz-markdown>
-            @if (msg.sql_snippet) {
+            @if (msg.sql_snippet && !isDirectSqlMessage(msg)) {
               @if (candidateError(msg.id)) {
                 <div class="error-container mt-2" role="alert">
                   <mat-icon aria-hidden="true" class="icon-small">warning</mat-icon>

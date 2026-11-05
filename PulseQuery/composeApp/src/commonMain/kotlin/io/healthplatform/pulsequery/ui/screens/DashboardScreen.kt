@@ -1216,7 +1216,7 @@ fun WidgetElevatedCard(
                     }
                 }
                 val generatedSql = renderState.generatedSql
-                if (!generatedSql.isNullOrBlank()) {
+                if (!generatedSql.isNullOrBlank() && !renderState.processor.isDirectSql) {
                     Text(
                         text = stringResource(Res.string.generated_sql_label, generatedSql),
                         style = MaterialTheme.typography.labelSmall,

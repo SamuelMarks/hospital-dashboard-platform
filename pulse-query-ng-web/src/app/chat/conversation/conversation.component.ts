@@ -109,6 +109,8 @@ import { ArenaSqlService } from '../arena-sql.service';
       }
       .message-bubble {
         max-width: 90%;
+        min-width: 0;
+        overflow: hidden;
         border-radius: 16px;
         box-shadow: none !important;
         border: 1px solid var(--sys-surface-border);
@@ -220,7 +222,9 @@ import { ArenaSqlService } from '../arena-sql.service';
         font-weight: 700;
       }
       .table-preview {
-        max-height: 200px;
+        width: 100%;
+        max-width: 100%;
+        max-height: 260px;
         overflow: auto;
         margin-top: 8px;
         border-radius: 4px;
@@ -558,7 +562,34 @@ export class ConversationComponent {
    * @returns True if at least one candidate has a SQL snippet.
    */
   hasSqlCandidates(msg: MessageResponse): boolean {
-    return !!msg.candidates?.some((c) => !!c.sql_snippet);
+    return !!msg.candidates?.some((c) => !!c.sql_snippet && !this.isDirectSqlCandidate(c));
+  }
+
+  /**
+   * Checks whether a candidate represents a direct `SQL [no model]` execution.
+   *
+   * @param cand - The candidate response to inspect.
+   * @returns True when the candidate was executed directly on DuckDB without an LLM model.
+   */
+  isDirectSqlCandidate(cand: MessageCandidateResponse): boolean {
+    const name = (cand.model_name || '').trim().toUpperCase();
+    return name === 'SQL' || name.startsWith('SQL [NO MODEL]');
+  }
+
+  /**
+   * Checks whether a message was produced exclusively by a direct `SQL [no model]` execution.
+   *
+   * @param msg - The message response to inspect.
+   * @returns True when the message is a direct SQL execution result and should not show `'Suggested Query'`.
+   */
+  isDirectSqlMessage(msg: MessageResponse): boolean {
+    if (msg.candidates && msg.candidates.length === 1) {
+      const only = msg.candidates[0];
+      if (only && this.isDirectSqlCandidate(only)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

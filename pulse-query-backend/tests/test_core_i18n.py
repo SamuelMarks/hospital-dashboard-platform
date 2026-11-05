@@ -31,8 +31,10 @@ def test_translator_fallback() -> None:
   msg = get_translated_message("-", "error.invalid_credentials")
   assert msg == "Incorrect email or password"
 
-  # Test missing language falls back to default
+  # Test French locale translation and missing language fallback to default
   msg = get_translated_message("fr-FR", "error.invalid_credentials")
+  assert msg == "Adresse e-mail ou mot de passe incorrect"
+  msg = get_translated_message("pt-BR", "error.invalid_credentials")
   assert msg == "Incorrect email or password"
 
   # Test unknown language falling back to en where key missing defaults to key

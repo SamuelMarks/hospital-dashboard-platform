@@ -441,7 +441,7 @@ async def test_refresh_widget_natural_text_and_processor_branches(
     assert res_sql.status_code == 200
     payload_sql = res_sql.json()[str(w_nl.id)]
     assert payload_sql["processor_used"] == "SQL"
-    assert payload_sql["generated_sql"] == "SELECT 9 AS x"
+    assert payload_sql["generated_sql"] is None
 
   # 3. Execute withprocessor="SQL" and forbidden DDL statement returns error in widget payload
   res_bad_sql = await client.post(

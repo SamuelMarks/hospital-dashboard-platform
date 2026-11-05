@@ -558,6 +558,28 @@ private fun ChatConversationHistoryRow(
 }
 
 /**
+ * Checks whether a model name represents direct read-only DuckDB SQL execution (`SQL [no model]`).
+ *
+ * @param modelName Candidate model name string.
+ * @return `true` when the candidate was executed directly on DuckDB without an LLM model.
+ */
+internal fun isDirectSqlModelName(modelName: String): Boolean {
+    val norm = modelName.trim().uppercase()
+    return norm == "SQL" || norm.startsWith("SQL [NO MODEL]")
+}
+
+/**
+ * Checks whether a [MessageResponse] was produced exclusively by a direct `SQL [no model]` execution.
+ *
+ * @param message The [MessageResponse] to inspect.
+ * @return `true` when the message has a single candidate that is a direct SQL execution.
+ */
+internal fun isDirectSqlMessageResponse(message: MessageResponse): Boolean {
+    val cands = message.candidates ?: return false
+    return cands.size == 1 && isDirectSqlModelName(cands.first().modelName)
+}
+
+/**
  * A single message bubble displaying the content, inline read-only DuckDB SQL execution preview,
  * and any competing model candidate variations.
  *
@@ -577,6 +599,8 @@ fun ChatBubble(
 ) {
     val isUser = message.role == "user"
     var showCandidates by remember { mutableStateOf(false) }
+    val contentScrollState = rememberScrollState()
+    val isTableContent = message.content.contains("\n| ")
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -603,11 +627,13 @@ fun ChatBubble(
                 Text(
                     text = message.content,
                     color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyLarge
+                    fontFamily = if (isTableContent) FontFamily.Monospace else FontFamily.Default,
+                    style = if (isTableContent) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyLarge,
+                    modifier = if (isTableContent) Modifier.horizontalScroll(contentScrollState) else Modifier
                 )
 
                 val snippet = message.sqlSnippet
-                if (!snippet.isNullOrBlank()) {
+                if (!snippet.isNullOrBlank() && !isDirectSqlMessageResponse(message)) {
                     ChatPrimarySqlSnippetSection(
                         messageId = message.id,
                         snippet = snippet,
@@ -618,7 +644,7 @@ fun ChatBubble(
                 }
 
                 val candidateList = message.candidates
-                if (!candidateList.isNullOrEmpty()) {
+                if (!candidateList.isNullOrEmpty() && !isDirectSqlMessageResponse(message)) {
                     ChatCandidateVariationsSection(
                         candidateList = candidateList,
                         sqlExecutionResults = sqlExecutionResults,
@@ -814,7 +840,7 @@ private fun ChatCandidateCard(
                     color = MaterialTheme.colorScheme.tertiary
                 )
             }
-            val candSql = candidate.sqlSnippet
+            val candSql = if (isDirectSqlModelName(candidate.modelName)) null else candidate.sqlSnippet
             if (!candSql.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(

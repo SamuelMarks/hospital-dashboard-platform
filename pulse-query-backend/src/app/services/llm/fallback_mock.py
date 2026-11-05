@@ -11,19 +11,20 @@ def build_streaming_mock_sql_response() -> str:
   """
   Builds a multi-line streaming Markdown SQL response used when no real LLM is configured.
 
+  Emits strictly SQL and `--` SQL comments explaining the query.
+
   Returns:
       str: Formatted Markdown string with a hospital clinical service count SQL query.
   """
   nl = chr(10)
   return (
-    f"Here is the SQL query for your hospital data analysis:{nl}{nl}"
     f"```sql{nl}"
+    f"-- Aggregate patient counts by clinical service from synthetic_hospital_data{nl}"
     f"SELECT Clinical_Service, COUNT(*) as patient_count{nl}"
     f"FROM synthetic_hospital_data{nl}"
     f"GROUP BY Clinical_Service{nl}"
     f"ORDER BY patient_count DESC;{nl}"
-    f"```{nl}{nl}"
-    "This query aggregates patient counts by clinical service."
+    f"```"
   )
 
 
@@ -31,13 +32,15 @@ def build_streaming_error_fallback_sql() -> str:
   """
   Builds a fallback Markdown SQL snippet when both streaming and standard completion fail.
 
+  Emits strictly SQL and `--` SQL comments explaining the fallback query.
+
   Returns:
       str: Formatted Markdown string containing a synthetic fallback SQL query.
   """
   nl = chr(10)
   return (
-    f"Here is the fallback analysis query:{nl}{nl}"
     f"```sql{nl}"
+    f"-- Fallback analysis query generated after streaming error{nl}"
     f"SELECT 'System Fallback' as source, 'synthetic_hospital_data' as dataset;{nl}"
     "```"
   )

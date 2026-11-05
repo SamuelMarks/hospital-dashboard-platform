@@ -22,7 +22,7 @@ export const BANNED_PATTERNS: readonly RegExp[] = [
   /\/\*\*\s*doc\s*\*\//i,
   /^[A-Za-z0-9_$]+\s+property\.$/i,
   /^(?:[A-Za-z0-9_]+\s+){1,2}(?:component|service|store|pipe|directive|guard|dialog)\.$/i,
-  /^(Store|Dialog|Router)\.$/i,
+  /^(Store|Dialog|Router|Constructor)\.$/i,
   /^Creates a new [A-Za-z0-9_]+\.$/i,
   /^Ng On (Init|Destroy|Changes)\.$/i,
   /^Initialize component\.$/i,
@@ -44,7 +44,7 @@ export function isPlaceholderDoc(text: string): boolean {
 
 /**
  * Recursively collects all `.ts` application source files under `dirPath`,
- * excluding `.spec.ts` files, `api-client`, and test utilities.
+ * excluding `.spec.ts` files, `api-client`, and Vitest setup bootstrap files.
  *
  * @param dirPath - Root directory to scan.
  * @param acc - Mutable accumulator of discovered file paths.
@@ -58,7 +58,7 @@ export function collectSourceFiles(
   for (const entry of entries) {
     const fullPath = path.join(dirPath, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === "api-client" || entry.name === "test-utils") {
+      if (entry.name === "api-client") {
         continue;
       }
       collectSourceFiles(fullPath, acc);
@@ -67,7 +67,8 @@ export function collectSourceFiles(
       entry.name.endsWith(".ts") &&
       !entry.name.endsWith(".spec.ts") &&
       !entry.name.endsWith(".d.ts") &&
-      entry.name !== "test-setup.ts"
+      entry.name !== "test-setup.ts" &&
+      entry.name !== "vitest-setup-entry.ts"
     ) {
       acc.push(fullPath);
     }
@@ -343,10 +344,13 @@ export function verifySourceFileText(
             errors,
           );
         } else if (ts.isMethodSignature(member) && member.name) {
-          verifyNodeDoc(
+          const mLabel = `interface method ${intfName}.${member.name.getText(sf)}`;
+          verifyNodeDoc(sf, member, mLabel, relPath, errors);
+          verifyParameterDocs(
             sf,
             member,
-            `interface method ${intfName}.${member.name.getText(sf)}`,
+            member.parameters,
+            mLabel,
             relPath,
             errors,
           );

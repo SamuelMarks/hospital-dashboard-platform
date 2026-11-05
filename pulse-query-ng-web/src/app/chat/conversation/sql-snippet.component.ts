@@ -81,23 +81,28 @@ export class SqlSnippetComponent {
 
   /** Computed signal returning HTML-escaped SQL string with syntax highlighting span tags. */
   readonly highlightedSql = computed((): string => {
-    let code = this.sql() || '';
-    code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    code = code.replace(/'([^']*)'/g, '<span class="string">\'$1\'</span>');
-    code = code.replace(/(--.*$)/gm, '<span class="comment">$1</span>');
-    code = code.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="number">$1</span>');
+    const raw = this.sql() || '';
+    if (!raw) return '';
+    const escaped = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const tokenPattern =
+      /(--[^\n]*)|('[^']*')|\b(\d+(?:\.\d+)?)\b|\b(SELECT|FROM|WHERE|GROUP|BY|ORDER|LIMIT|OFFSET|JOIN|LEFT|RIGHT|INNER|OUTER|FULL|CROSS|ON|AND|OR|NOT|AS|WITH|CASE|WHEN|THEN|ELSE|END|DISTINCT|HAVING|UNION|ALL|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|DROP|ALTER|VIEW|INDEX|EXPLAIN|PRAGMA)\b|\b(count|sum|avg|max|min|coalesce|round|cast|date_trunc|to_char|now)\b/gi;
 
-    const keywords =
-      'SELECT|FROM|WHERE|GROUP|BY|ORDER|LIMIT|OFFSET|JOIN|LEFT|RIGHT|INNER|OUTER|FULL|CROSS|ON|AND|OR|NOT|AS|WITH|CASE|WHEN|THEN|ELSE|END|DISTINCT|HAVING|UNION|ALL|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|DROP|ALTER|VIEW|INDEX|EXPLAIN|PRAGMA';
-    code = code.replace(new RegExp(`\\b(${keywords})\\b`, 'gi'), '<span class="keyword">$1</span>');
-
-    const functions = 'count|sum|avg|max|min|coalesce|round|cast|date_trunc|to_char|now';
-    code = code.replace(
-      new RegExp(`\\b(${functions})\\b`, 'gi'),
-      '<span class="function">$1</span>',
+    return escaped.replace(
+      tokenPattern,
+      (
+        match: string,
+        comment?: string,
+        strLit?: string,
+        numLit?: string,
+        keyword?: string,
+      ): string => {
+        if (comment !== undefined) return `<span class="comment">${comment}</span>`;
+        if (strLit !== undefined) return `<span class="string">${strLit}</span>`;
+        if (numLit !== undefined) return `<span class="number">${numLit}</span>`;
+        if (keyword !== undefined) return `<span class="keyword">${keyword}</span>`;
+        return `<span class="function">${match}</span>`;
+      },
     );
-
-    return code;
   });
 
   /** Emits the `run` output event if a SQL snippet is present. */

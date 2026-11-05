@@ -6,7 +6,9 @@ package io.healthplatform.pulsequery.ui.screens.auth
 
 import io.healthplatform.pulsequery.api.apis.AuthApi
 import io.healthplatform.pulsequery.api.models.UserCreate
+import io.healthplatform.pulsequery.api.models.UserResponse
 import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.error.UiErrorKey
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
@@ -18,6 +20,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+/**
+ * Abstraction for mutating active authentication session state (`baseUrl`, `token`, `user`),
+ * decoupling [AuthViewModel] from direct global [AppContainer] singleton mutations.
+ *
+ * @property onUpdateBaseUrl Callback updating the backend server base URL.
+ * @property onUpdateToken Callback updating the active JWT bearer token.
+ * @property onUpdateUser Callback updating the authenticated [UserResponse].
+ */
+data class AuthSessionMutator(
+    val onUpdateBaseUrl: (String) -> Unit = { AppContainer.currentBaseUrl = it },
+    val onUpdateToken: (String?) -> Unit = { AppContainer.currentToken = it },
+    val onUpdateUser: (UserResponse?) -> Unit = { AppContainer.currentUser = it }
+)
 
 /**
  * Immutable UI state for [io.healthplatform.pulsequery.ui.screens.LoginScreen]
@@ -50,10 +66,12 @@ data class AuthUiState(
  *
  * @property scope Coroutine scope used for asynchronous API requests.
  * @property authApi Optional explicit [AuthApi] client for authentication endpoints.
+ * @property sessionMutator Session state mutator decoupling [AuthViewModel] from [AppContainer].
  */
 class AuthViewModel(
     private val scope: CoroutineScope,
-    private val authApi: AuthApi? = null
+    private val authApi: AuthApi? = null,
+    private val sessionMutator: AuthSessionMutator = AuthSessionMutator()
 ) {
     private val currentAuthApi: AuthApi
         get() = authApi ?: AppContainer.authApi
@@ -114,12 +132,12 @@ class AuthViewModel(
     }
 
     /**
-     * Updates the backend server base URL in [AppContainer] and closes the settings dialog.
+     * Updates the backend server base URL via [sessionMutator] and closes the settings dialog.
      *
      * @param newUrl Updated server base URL string.
      */
     fun saveBaseUrl(newUrl: String) {
-        AppContainer.currentBaseUrl = newUrl
+        sessionMutator.onUpdateBaseUrl(newUrl)
         _state.update { it.copy(showSettingsDialog = false) }
     }
 
@@ -171,7 +189,8 @@ class AuthViewModel(
     ): Result<Unit> {
         if (current.isRegisterMode) {
             val userCreate = UserCreate(email = current.email, password = current.password)
-            currentAuthApi.registerUserApiV1AuthRegisterPost(userCreate)
+            currentAuthApi.registerUserApiV1AuthRegisterPost(userCreate).asResult()
+                .onFailure { return Result.failure(it) }
         }
 
         val tokenResponse = currentAuthApi.loginAccessTokenApiV1AuthLoginPost(
@@ -183,11 +202,11 @@ class AuthViewModel(
             clientSecret = null
         )
         return tokenResponse.asResult().map { tokenBody ->
-            AppContainer.currentToken = tokenBody.accessToken
+            sessionMutator.onUpdateToken(tokenBody.accessToken)
             val meResponse = currentAuthApi.readUsersMeApiV1AuthMeGet()
             meResponse.asResult().fold(
                 onSuccess = { user ->
-                    AppContainer.currentUser = user
+                    sessionMutator.onUpdateUser(user)
                     _state.update { it.copy(isLoading = false, errorMessage = null) }
                     onLoginSuccess()
                 },
@@ -214,17 +233,17 @@ class AuthViewModel(
         val msg = PulseQueryError.fromThrowable(error).messageOrDefault("")
         if (isRegisterMode) {
             val detail = if (msg.contains("already registered", ignoreCase = true)) {
-                "Email already registered"
+                UiErrorKey.AUTH_EMAIL_ALREADY_REGISTERED.fallbackMessage
             } else {
                 msg.ifBlank { errAuthFailed }
             }
-            return "Registration failed: $detail"
+            return "${UiErrorKey.REGISTRATION_FAILED.fallbackMessage}: $detail"
         }
         return when {
             msg.contains("401", ignoreCase = true) || msg.contains("Unauthorized", ignoreCase = true) ->
-                "Invalid username or password."
+                UiErrorKey.AUTH_INVALID_CREDENTIALS.fallbackMessage
             msg.contains("timeout", ignoreCase = true) ->
-                "Network timeout. Please check your connection."
+                UiErrorKey.AUTH_NETWORK_TIMEOUT.fallbackMessage
             else -> errAuthFailed
         }
     }
@@ -236,19 +255,15 @@ class AuthViewModel(
      */
     fun register(onRegisterSuccess: () -> Unit) {
         val current = _state.value
-        val validationError = validateRegistrationInput(current)
-        if (validationError != null) {
-            _state.update { it.copy(errorMessage = validationError) }
+        val validated = validateRegistrationInput(current).getOrElse { err ->
+            _state.update { it.copy(errorMessage = err.message) }
             return
         }
-
-        val email = current.email.trim()
-        val password = current.password
 
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
             runCatchingPulseAsync {
-                executeRegistrationFlow(email, password, onRegisterSuccess)
+                executeRegistrationFlow(validated, onRegisterSuccess)
             }.onFailure { e ->
                 val displayMsg = formatRegistrationError(e)
                 _state.update { it.copy(isLoading = false, errorMessage = displayMsg) }
@@ -257,52 +272,68 @@ class AuthViewModel(
     }
 
     /**
-     * Validates registration fields and returns an error string or null when valid.
+     * Validates registration fields and returns a [Result] wrapping a validated [UserCreate] payload
+     * or a typed [PulseQueryError.Validation] failure.
      *
      * @param current Current [AuthUiState] to validate.
-     * @return Validation error description, or null if valid.
+     * @return [Result] containing [UserCreate] when valid, or [PulseQueryError.Validation] when invalid.
      */
-    private fun validateRegistrationInput(current: AuthUiState): String? {
+    internal fun validateRegistrationInput(current: AuthUiState): Result<UserCreate> {
         val email = current.email.trim()
         val password = current.password
         val confirm = current.confirmPassword
         return when {
-            email.isBlank() || password.isBlank() || confirm.isBlank() -> "All fields are required."
-            password != confirm -> "Passwords do not match."
-            password.length < 6 -> "Password must be at least 6 characters."
-            else -> null
+            email.isBlank() || password.isBlank() || confirm.isBlank() ->
+                Result.failure(
+                    PulseQueryError.Validation.RequiredField(
+                        field = "registration",
+                        message = UiErrorKey.AUTH_ALL_FIELDS_REQUIRED.fallbackMessage
+                    )
+                )
+            password != confirm ->
+                Result.failure(
+                    PulseQueryError.Validation.InvalidValue(
+                        field = "confirmPassword",
+                        message = UiErrorKey.AUTH_PASSWORDS_DO_NOT_MATCH.fallbackMessage
+                    )
+                )
+            password.length < 6 ->
+                Result.failure(
+                    PulseQueryError.Validation.InvalidValue(
+                        field = "password",
+                        message = UiErrorKey.AUTH_PASSWORD_TOO_SHORT.fallbackMessage
+                    )
+                )
+            else -> Result.success(UserCreate(email = email, password = password))
         }
     }
 
     /**
      * Executes the user registration API request and updates [state] accordingly.
      *
-     * @param email Trimmed user email address.
-     * @param password User password string.
+     * @param req Validated [UserCreate] payload.
      * @param onRegisterSuccess Callback invoked when registration succeeds.
      */
     private suspend fun executeRegistrationFlow(
-        email: String,
-        password: String,
+        req: UserCreate,
         onRegisterSuccess: () -> Unit
     ) {
-        val req = UserCreate(email = email, password = password)
         val res = currentAuthApi.registerUserApiV1AuthRegisterPost(req)
         res.asResult().fold(
             onSuccess = {
                 _state.update {
                     it.copy(
                         isLoading = false,
-                        successMessage = "Account created successfully! Please sign in."
+                        successMessage = UiErrorKey.AUTH_REGISTER_SUCCESS.fallbackMessage
                     )
                 }
                 onRegisterSuccess()
             },
             onFailure = {
                 val displayMsg = if (res.status == 400) {
-                    "An account with this email already exists."
+                    UiErrorKey.AUTH_EMAIL_EXISTS.fallbackMessage
                 } else {
-                    "Registration failed (Error ${res.status})."
+                    "${UiErrorKey.REGISTRATION_FAILED.fallbackMessage} (Error ${res.status})."
                 }
                 _state.update { it.copy(isLoading = false, errorMessage = displayMsg) }
             }
@@ -317,9 +348,9 @@ class AuthViewModel(
      */
     private fun formatRegistrationError(error: Throwable): String {
         val pulseError = PulseQueryError.fromThrowable(error)
-        val msg = pulseError.messageOrDefault("Registration failed")
+        val msg = pulseError.messageOrDefault(UiErrorKey.REGISTRATION_FAILED.fallbackMessage)
         return if (isDuplicateRegistrationError(pulseError, msg)) {
-            "An account with this email already exists."
+            UiErrorKey.AUTH_EMAIL_EXISTS.fallbackMessage
         } else {
             msg
         }

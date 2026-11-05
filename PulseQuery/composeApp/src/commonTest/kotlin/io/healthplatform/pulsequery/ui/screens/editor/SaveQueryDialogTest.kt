@@ -89,6 +89,19 @@ class SaveQueryDialogTest : BaseComposeTest() {
         assertFalse(uiState.isSaving)
         assertEquals("Err", uiState.error)
 
+        val msgs = LocalizedSaveMessages()
+        assertEquals("Title is required", msgs.titleRequiredMessage)
+        assertEquals("Target dashboard is required", msgs.dashboardRequiredMessage)
+        val cmd = SaveQueryCommand(
+            destination = SaveQueryDestination.DASHBOARD_WIDGET,
+            title = "T",
+            sql = "SELECT 1",
+            dashboardId = "d-1"
+        )
+        assertEquals("table", cmd.visualization)
+        assertEquals("Clinical", cmd.category)
+        assertEquals("", cmd.description)
+
         assertEquals(
             "ICU Board",
             resolveSelectedDashboardLabel(listOf(d1), "d-1", isLoadingDashboards = false)

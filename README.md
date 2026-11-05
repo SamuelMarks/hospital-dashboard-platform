@@ -281,7 +281,7 @@ _UI runs at `http://localhost:4200`_
 
 ### 3. Declarative Full-Stack Orchestration (LibScript)
 
-This repository includes a unified `libscript.json` manifest that declaratively provisions runtimes (`python 3.12`, `nodejs 22`, `uv`), databases (`postgres 18`, `duckdb`), reverse proxy ingress (`nginx` with SPA fallback and `/ws` WebSocket upgrades), frontends (Angular 19 web and Kotlin Multiplatform Compose), background services, and JAX/MPAX machine learning benchmarks:
+This repository includes a unified `libscript.json` manifest that declaratively provisions runtimes (`python 3.12`, `nodejs 22`, `uv`), databases (`postgres 18`, `duckdb`), reverse proxy ingress (`nginx` with SPA fallback and `/ws` WebSocket upgrades), frontends (Angular 22 web and Kotlin Multiplatform Compose), background services, and JAX/MPAX machine learning benchmarks:
 
 ```bash
 # Resolve and install dependencies, provision databases, and run lifecycle hooks

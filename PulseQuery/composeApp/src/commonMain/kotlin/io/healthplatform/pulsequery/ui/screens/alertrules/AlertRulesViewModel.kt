@@ -9,6 +9,7 @@ import io.healthplatform.pulsequery.api.models.AlertRuleCreate
 import io.healthplatform.pulsequery.api.models.AlertRuleResponse
 import io.healthplatform.pulsequery.api.models.AlertRuleUpdate
 import io.healthplatform.pulsequery.api.models.AlertSeverity
+import io.healthplatform.pulsequery.core.error.PulseQueryError
 import io.healthplatform.pulsequery.core.error.UiErrorKey
 import io.healthplatform.pulsequery.core.model.AlertRuleId
 import io.healthplatform.pulsequery.core.model.ClinicalRole
@@ -135,6 +136,38 @@ class AlertRulesViewModel(
     }
 
     /**
+     * Validates unit category and occupancy threshold percentage inputs, returning a [Result]
+     * containing the trimmed unit category and parsed threshold or a [PulseQueryError.Validation].
+     *
+     * @param unitCategory Raw unit category string.
+     * @param thresholdText Raw occupancy threshold string.
+     * @return [Result] wrapping `(trimmedUnitCategory, thresholdPercentage)` on success.
+     */
+    internal fun validateAlertRuleInputs(
+        unitCategory: String,
+        thresholdText: String
+    ): Result<Pair<String, Double>> {
+        if (unitCategory.isBlank()) {
+            return Result.failure(
+                PulseQueryError.Validation.RequiredField(
+                    field = "unitCategory",
+                    message = UiErrorKey.ALERT_RULE_UNIT_REQUIRED.fallbackMessage
+                )
+            )
+        }
+        val threshold = thresholdText.toDoubleOrNull()
+        if (threshold == null || threshold < 1.0 || threshold > 100.0) {
+            return Result.failure(
+                PulseQueryError.Validation.InvalidValue(
+                    field = "threshold",
+                    message = UiErrorKey.ALERT_RULE_THRESHOLD_RANGE.fallbackMessage
+                )
+            )
+        }
+        return Result.success(unitCategory.trim() to threshold)
+    }
+
+    /**
      * Validates and creates a new capacity alert rule.
      *
      * @param unitCategory Hospital unit category name.
@@ -148,13 +181,8 @@ class AlertRulesViewModel(
         severity: AlertSeverity = AlertSeverity.WARNING,
         onSuccess: () -> Unit = {}
     ) {
-        val threshold = thresholdText.toDoubleOrNull()
-        if (unitCategory.isBlank()) {
-            _state.update { it.copy(dialogError = "Unit category is required") }
-            return
-        }
-        if (threshold == null || threshold < 1.0 || threshold > 100.0) {
-            _state.update { it.copy(dialogError = "Threshold must be between 1 and 100") }
+        val (cleanUnit, threshold) = validateAlertRuleInputs(unitCategory, thresholdText).getOrElse { err ->
+            _state.update { it.copy(dialogError = err.message) }
             return
         }
 
@@ -163,7 +191,7 @@ class AlertRulesViewModel(
             runResultPulseAsync {
                 currentAlertRulesApi.createAlertRuleApiV1AnalyticsAlertRulesPost(
                     AlertRuleCreate(
-                        unitCategory = unitCategory.trim(),
+                        unitCategory = cleanUnit,
                         thresholdPercentage = threshold,
                         severity = severity,
                         isActive = true
@@ -205,13 +233,8 @@ class AlertRulesViewModel(
         isActive: Boolean,
         onSuccess: () -> Unit = {}
     ) {
-        val threshold = thresholdText.toDoubleOrNull()
-        if (unitCategory.isBlank()) {
-            _state.update { it.copy(dialogError = "Unit category is required") }
-            return
-        }
-        if (threshold == null || threshold < 1.0 || threshold > 100.0) {
-            _state.update { it.copy(dialogError = "Threshold must be between 1 and 100") }
+        val (cleanUnit, threshold) = validateAlertRuleInputs(unitCategory, thresholdText).getOrElse { err ->
+            _state.update { it.copy(dialogError = err.message) }
             return
         }
 
@@ -221,7 +244,7 @@ class AlertRulesViewModel(
                 currentAlertRulesApi.updateAlertRuleApiV1AnalyticsAlertRulesRuleIdPut(
                     ruleId = ruleId,
                     alertRuleUpdate = AlertRuleUpdate(
-                        unitCategory = unitCategory.trim(),
+                        unitCategory = cleanUnit,
                         thresholdPercentage = threshold,
                         severity = severity,
                         isActive = isActive

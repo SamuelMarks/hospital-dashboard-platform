@@ -68,14 +68,15 @@ describe('FocusTrapDirective', () => {
     }
   });
 
-  it('should create and support autoFocus=true on init', () => {
-    expect(component).toBeTruthy();
+  it('should create with autoFocus=false and focus first visible element on init when autoFocus=true', () => {
+    expect(component.autoFocus()).toBe(false);
 
     /** Host component with autoFocus enabled. */
     @Component({
       selector: 'app-autofocus-trap',
       imports: [FocusTrapDirective],
-      template: '<div appFocusTrap [autoFocus]="true"><button id="b1">One</button></div>',
+      template:
+        '<div appFocusTrap [autoFocus]="true"><button id="b1" data-jsdom-mock-visible="true">One</button></div>',
     })
     class AutoFocusHostComponent {}
 
@@ -213,35 +214,6 @@ describe('FocusTrapDirective', () => {
       f.detectChanges();
       expect(spy).toHaveBeenCalled();
     }).not.toThrow();
-  });
-
-  it('should focus first element on init if autoFocus is true', async () => {
-    /** AutoFocus focus trap host with visible button. */
-    @Component({
-      selector: 'app-autofocus-trap',
-      imports: [FocusTrapDirective],
-      template:
-        '<div appFocusTrap [autoFocus]="true"><button id="af-btn" data-jsdom-mock-visible="true">Btn</button></div>',
-    })
-    class AutoFocusTrapComponent {}
-
-    TestBed.resetTestingModule();
-    await TestBed.configureTestingModule({
-      imports: [AutoFocusTrapComponent, FocusTrapDirective],
-    }).compileComponents();
-
-    const f = TestBed.createComponent(AutoFocusTrapComponent);
-    const fEl = f.nativeElement as HTMLElement;
-    document.body.appendChild(fEl);
-
-    const btn = fEl.querySelector('#af-btn') as HTMLElement;
-    Object.defineProperty(btn, 'offsetWidth', { value: 100, configurable: true });
-    Object.defineProperty(btn, 'offsetHeight', { value: 100, configurable: true });
-
-    f.detectChanges();
-
-    expect(document.activeElement).toBe(btn);
-    fEl.remove();
   });
 
   it('should restore focus on destroy', () => {

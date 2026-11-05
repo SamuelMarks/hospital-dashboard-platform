@@ -127,7 +127,10 @@ export class BreakpointService implements OnDestroy {
 
   /** Touch signal. */ private readonly _hasTouch: WritableSignal<boolean> = signal(false);
 
-  /** Constructor. */ constructor() {
+  /**
+   * Initializes the read-only touch signal and binds browser viewport resize and orientation listeners.
+   */
+  constructor() {
     this.hasTouch = this._hasTouch.asReadonly();
     if (isPlatformBrowser(this.platformId)) {
       this.initialize();

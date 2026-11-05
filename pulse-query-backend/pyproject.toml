@@ -96,6 +96,8 @@ concurrency = ["greenlet", "thread"]
 source = ["app", "scripts", "alembic"]
 omit = [
     "*/tests/*",
+    "*/.venv/*",
+    "*/site-packages/*",
 ]
 
 [tool.coverage.report]
